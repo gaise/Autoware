@@ -459,6 +459,13 @@ static void imu_callback(const sensor_msgs::Imu::Ptr& input)
 
 static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+  // measurement
+  std::chrono::time_point<std::chrono::system_clock> sit_start, sit_end, align_start, align_end;
+  double sit_time, align_time;
+  FILE* time_fp;
+  int points_num;
+  // end
+  
   double r;
   pcl::PointXYZI p;
   pcl::PointCloud<pcl::PointXYZI> tmp, scan;
@@ -505,6 +512,10 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   voxel_grid_filter.setInputCloud(scan_ptr);
   voxel_grid_filter.filter(*filtered_scan_ptr);
 
+  // measurement
+  points_num = filtered_scan_ptr->size();
+  // end
+  
   pcl::PointCloud<pcl::PointXYZI>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZI>(map));
 
 #ifdef CUDA_FOUND
@@ -530,11 +541,23 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 #ifdef CUDA_FOUND
     if (_use_gpu == true)
     {
+      // measurement
+      sit_start = std::chrono::system_clock::now();
       gpu_ndt.setInputTarget(map_ptr);
+      sit_end = std::chorno::system_clock::now();
+      sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
+      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/mapping/gpu.csv", "w");
+      // end
     }
     else
     {
+      // measurement
+      sit_start = std::chrono::system_clock::now();
       ndt.setInputTarget(map_ptr);
+      sit_end = std::chrono::system_clock::now();
+      sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
+      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/mapping/cpu.csv", "w");
+      // end
     }
 #else
     ndt.setInputTarget(map_ptr);
@@ -587,7 +610,15 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 #ifdef CUDA_FOUND
   if (_use_gpu == true)
   {
+    // measurement
+    align_start = std::chrono::system_clock::now();
     gpu_ndt.align(init_guess);
+    align_end = std::chrono::system_clock::now();
+    align_time = std::chrono::duration_cast<std::chrono::microseconds>(align_end - align_start).count() / 1000.0;
+    fprintf(time_fp, "%lf,%lf,%d\n", sit_time, align_time, points_num);
+    fclose(time_fp);
+    // end
+    
     t_localizer = gpu_ndt.getFinalTransformation();
     has_converged = gpu_ndt.hasConverged();
     fitness_score = gpu_ndt.getFitnessScore();
@@ -605,7 +636,15 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 #endif
   else
   {
+    // measurement
+    align_start = std::chrono::system_clock::now();
     ndt.align(*output_cloud, init_guess);
+    align_end = std::chrono::system_clock::now();
+    align_time = std::chrono::duration_cast<std::chrono::microseconds>(align_end - align_start).count / 1000.0;
+    fprintf(time_fp, "%lf,%lf,%d\n", sit_time, align_time, points_num);
+    fclose(time_fp);
+    //end
+    
     t_localizer = ndt.getFinalTransformation();
     has_converged = ndt.hasConverged();
     fitness_score = ndt.getFitnessScore();

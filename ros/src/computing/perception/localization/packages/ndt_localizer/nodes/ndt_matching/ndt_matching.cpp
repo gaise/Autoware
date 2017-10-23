@@ -388,6 +388,12 @@ static void param_callback(const autoware_msgs::ConfigNdt::ConstPtr& input)
 
 static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+  // time measurement
+  std::chrono::time_point<std::chrono::system_clock> sit_start, sit_end;
+  double sit_time;
+  int points_num;
+  // end
+  
   if (map_loaded == 0)
   {
     // Convert the data type(from sensor_msgs to pcl).
@@ -411,11 +417,26 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     }
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZ>(map));
+
+    // measurement
+    points_num = map_ptr->size();
+    // end
+    
 // Setting point cloud to be aligned to.
 #ifdef CUDA_FOUND
     if (_use_gpu == true)
     {
+      // time measurement
+      sit_start = std::chrono::system_clock::now();
       gpu_ndt.setInputTarget(map_ptr);
+      sit_end = std::chrono::system_clock::now();
+      sit_time = std::chrono::duration_cast<std::chrono::microseconds(sit_end - sit_start).count() / 1000.0;
+      FILE *time_fp;
+      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/sit_gpu.csv", "w");
+      fprintf(time_fp, "%lf,%d\n", sit_time, points_num);
+      fclose(time_fp);
+      // end
+      
       gpu_ndt.setMaximumIterations(max_iter);
       gpu_ndt.setResolution(ndt_res);
       gpu_ndt.setStepSize(step_size);
@@ -424,7 +445,17 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     else
     {
 #endif
+      // time measurement
+      sit_start = std::chrono::system_clock::now();
       ndt.setInputTarget(map_ptr);
+      sit_end = std::chrono::system_clock::now();
+      sit_time = std::chrono::duration_cast<std::chrono::microseconds(sit_end - sit_start).count() / 1000.0;
+      FILE *time_fp;
+      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/sit_cpu.csv", "w");
+      fprintf(time_fp, "%lf,%d\n", sit_time, points_num);
+      fclose(time_fp);
+      // end
+      
       ndt.setMaximumIterations(max_iter);
       ndt.setResolution(ndt_res);
       ndt.setStepSize(step_size);
@@ -787,7 +818,7 @@ static void imu_callback(const sensor_msgs::Imu::Ptr& input)
 }
 
 static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
-{
+{ 
   if (map_loaded == 1 && init_pos_set == 1)
   {
     matching_start = std::chrono::system_clock::now();
@@ -861,6 +892,11 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 #ifdef CUDA_FOUND
     if (_use_gpu == true)
     {
+      // measurement
+      FILE* time_fp;
+      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/align_gpu.csv", "a");
+      // end
+      
       align_start = std::chrono::system_clock::now();
       gpu_ndt.align(init_guess);
       align_end = std::chrono::system_clock::now();
@@ -897,6 +933,11 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 #endif
     else
     {
+      // measuremnt
+      FILE* time_fp;
+      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/align_cpu.csv", "a");
+      // end
+      
       align_start = std::chrono::system_clock::now();
       ndt.align(*output_cloud, init_guess);
       align_end = std::chrono::system_clock::now();
@@ -1235,6 +1276,11 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     exe_time = std::chrono::duration_cast<std::chrono::microseconds>(matching_end - matching_start).count() / 1000.0;
     time_ndt_matching.data = exe_time;
     time_ndt_matching_pub.publish(time_ndt_matching);
+
+    // measurement
+    fprintf(time_fp, "%lf,%lf,%d\n", exe_time, align_time, scan_points_num);
+    fclose(time_fp);
+    // end
 
     // Set values for /estimate_twist
     estimate_twist_msg.header.stamp = current_scan_time;
