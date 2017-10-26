@@ -393,6 +393,11 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   double sit_time;
   int points_num;
   // end
+
+  // debug
+  FILE* fp = fopen("/home/autoware/sandbox/autoware-gaise/time/bool.txt", "w");
+  fprintf(fp, "_use_gpu: %d\n", _use_gpu);
+  fclose(fp);
   
   if (map_loaded == 0)
   {
@@ -430,9 +435,9 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
       sit_start = std::chrono::system_clock::now();
       gpu_ndt.setInputTarget(map_ptr);
       sit_end = std::chrono::system_clock::now();
-      sit_time = std::chrono::duration_cast<std::chrono::microseconds(sit_end - sit_start).count() / 1000.0;
+      sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
       FILE *time_fp;
-      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/sit_gpu.csv", "w");
+      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/sit_gpu.csv", "w");
       fprintf(time_fp, "%lf,%d\n", sit_time, points_num);
       fclose(time_fp);
       // end
@@ -449,9 +454,9 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
       sit_start = std::chrono::system_clock::now();
       ndt.setInputTarget(map_ptr);
       sit_end = std::chrono::system_clock::now();
-      sit_time = std::chrono::duration_cast<std::chrono::microseconds(sit_end - sit_start).count() / 1000.0;
+      sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
       FILE *time_fp;
-      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/sit_cpu.csv", "w");
+      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/sit_cpu.csv", "w");
       fprintf(time_fp, "%lf,%d\n", sit_time, points_num);
       fclose(time_fp);
       // end
@@ -819,6 +824,7 @@ static void imu_callback(const sensor_msgs::Imu::Ptr& input)
 
 static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 { 
+  FILE* time_fp;
   if (map_loaded == 1 && init_pos_set == 1)
   {
     matching_start = std::chrono::system_clock::now();
@@ -893,8 +899,7 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     if (_use_gpu == true)
     {
       // measurement
-      FILE* time_fp;
-      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/align_gpu.csv", "a");
+      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/align_gpu.csv", "a");
       // end
       
       align_start = std::chrono::system_clock::now();
@@ -934,8 +939,7 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     else
     {
       // measuremnt
-      FILE* time_fp;
-      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/align_cpu.csv", "a");
+      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/align_cpu.csv", "a");
       // end
       
       align_start = std::chrono::system_clock::now();

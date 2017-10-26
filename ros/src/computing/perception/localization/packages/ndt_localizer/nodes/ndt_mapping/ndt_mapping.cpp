@@ -36,6 +36,7 @@
 
 #define OUTPUT  // If you want to output "position_log.txt", "#define OUTPUT".
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -544,9 +545,9 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
       // measurement
       sit_start = std::chrono::system_clock::now();
       gpu_ndt.setInputTarget(map_ptr);
-      sit_end = std::chorno::system_clock::now();
+      sit_end = std::chrono::system_clock::now();
       sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
-      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/mapping/gpu.csv", "w");
+      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/mapping/gpu.csv", "w");
       // end
     }
     else
@@ -556,7 +557,7 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
       ndt.setInputTarget(map_ptr);
       sit_end = std::chrono::system_clock::now();
       sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
-      time_fp = fopen("/Users/tomoya/sandbox/autoware/time/mapping/cpu.csv", "w");
+      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/mapping/cpu.csv", "w");
       // end
     }
 #else
@@ -640,7 +641,7 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     align_start = std::chrono::system_clock::now();
     ndt.align(*output_cloud, init_guess);
     align_end = std::chrono::system_clock::now();
-    align_time = std::chrono::duration_cast<std::chrono::microseconds>(align_end - align_start).count / 1000.0;
+    align_time = std::chrono::duration_cast<std::chrono::microseconds>(align_end - align_start).count() / 1000.0;
     fprintf(time_fp, "%lf,%lf,%d\n", sit_time, align_time, points_num);
     fclose(time_fp);
     //end
