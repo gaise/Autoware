@@ -10,7 +10,7 @@
   <arg name="use_openmp" default="false" />
   <arg name="get_height" default="false" />
   <arg name="use_local_transform" default="false" />
-  <arg name="use_gpu" default="false" />
+  <arg name="use_gpu" default="true" />
   <arg name="sync" default="false" />
   <arg name="imu_topic" default="/imu_raw" />
 
