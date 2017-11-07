@@ -30,7 +30,6 @@
 
 /*
  Localization and mapping program using Normal Distributions Transform
-
  Yuki KITSUKAWA
  */
 
@@ -463,10 +462,12 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   // measurement
   std::chrono::time_point<std::chrono::system_clock> sit_start, sit_end, align_start, align_end;
   double sit_time, align_time;
-  FILE* time_fp;
   int points_num;
-  // end
-  
+  // debug
+  FILE *debug_fp;
+  debug_fp = fopen("/home/autoware/sandbox/autoware-gaise/ros/debug.log", "a");
+  fprintf(debug_fp, "start\n");
+
   double r;
   pcl::PointXYZI p;
   pcl::PointCloud<pcl::PointXYZI> tmp, scan;
@@ -515,8 +516,9 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 
   // measurement
   points_num = filtered_scan_ptr->size();
-  // end
-  
+  // debug
+  fprintf(debug_fp, "points_num\n");
+
   pcl::PointCloud<pcl::PointXYZI>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZI>(map));
 
 #ifdef CUDA_FOUND
@@ -537,6 +539,8 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     ndt.setMaximumIterations(max_iter);
     ndt.setInputSource(filtered_scan_ptr);
   }
+  // debug
+  fprintf(debug_fp, "%d: sit\n", isMapUpdate);
   if (isMapUpdate == true)
   {
 #ifdef CUDA_FOUND
@@ -547,8 +551,11 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
       gpu_ndt.setInputTarget(map_ptr);
       sit_end = std::chrono::system_clock::now();
       sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
-      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/mapping/gpu.csv", "w");
-      // end
+      FILE *time_fp;
+      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/mapping/sit_gpu.csv", "a");
+      fprintf(time_fp, "%d,%lf\n", points_num, sit_time);
+      fflush(time_fp);
+      fclose(time_fp);
     }
     else
     {
@@ -557,8 +564,11 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
       ndt.setInputTarget(map_ptr);
       sit_end = std::chrono::system_clock::now();
       sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
-      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/mapping/cpu.csv", "w");
-      // end
+      FILE *time_fp;
+      time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/mapping/sit_cpu.csv", "a");
+      fprintf(time_fp, "%d,%lf\n", points_num, sit_time);
+      fflush(time_fp);
+      fclose(time_fp);
     }
 #else
     ndt.setInputTarget(map_ptr);
@@ -608,6 +618,9 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   pcl::PointCloud<pcl::PointXYZI>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZI>);
   std::cout << "Start aligning" << std::endl;
 
+  // debug
+  fprintf(debug_fp, "%d: before align\n", isMapUpdate);
+
 #ifdef CUDA_FOUND
   if (_use_gpu == true)
   {
@@ -616,10 +629,13 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     gpu_ndt.align(init_guess);
     align_end = std::chrono::system_clock::now();
     align_time = std::chrono::duration_cast<std::chrono::microseconds>(align_end - align_start).count() / 1000.0;
-    fprintf(time_fp, "%lf,%lf,%d\n", sit_time, align_time, points_num);
-    fclose(time_fp);
+    FILE *align_fp;
+    align_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/mapping/align_gpu.csv", "a");
+    fprintf(align_fp, "%d,%lf\n", points_num, align_time);
+    fflush(align_fp);
+    fclose(align_fp);
     // end
-    
+
     t_localizer = gpu_ndt.getFinalTransformation();
     has_converged = gpu_ndt.hasConverged();
     fitness_score = gpu_ndt.getFitnessScore();
@@ -642,10 +658,13 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     ndt.align(*output_cloud, init_guess);
     align_end = std::chrono::system_clock::now();
     align_time = std::chrono::duration_cast<std::chrono::microseconds>(align_end - align_start).count() / 1000.0;
-    fprintf(time_fp, "%lf,%lf,%d\n", sit_time, align_time, points_num);
-    fclose(time_fp);
-    //end
-    
+    FILE *align_fp;
+    align_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/mapping/align_cpu.csv", "a");
+    fprintf(align_fp, "%d,%lf\n", points_num, align_time);
+    fflush(align_fp);
+    fclose(align_fp);
+    // end
+
     t_localizer = ndt.getFinalTransformation();
     has_converged = ndt.hasConverged();
     fitness_score = ndt.getFitnessScore();
@@ -675,6 +694,9 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   }
 #endif
 #endif
+
+  // debug
+  fprintf(debug_fp, "end\n");
 
   t_base_link = t_localizer * tf_ltob;
 
