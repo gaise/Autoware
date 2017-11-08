@@ -211,8 +211,6 @@ static std_msgs::Float32 ndt_reliability;
 
 #ifdef CUDA_FOUND
 static bool _use_gpu = false;
-static char _sit_directory[256] = "/home/";
-static char _align_directory[256] = "/home/";
 #endif
 #ifdef USE_FAST_PCL
 static bool _use_openmp = false;
@@ -394,7 +392,10 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   std::chrono::time_point<std::chrono::system_clock> sit_start, sit_end;
   double sit_time;
   FILE *time_fp;
-  time_fp = fopen(_sit_directory, "a");
+  if (_use_gpu == true)
+    time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/sit_gpu.csv", "a");
+  else
+    time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/sit_cpu.csv", "a");
   int points_num;
   
   if (map_loaded == 0)
@@ -815,7 +816,10 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
   // measurement
   FILE *time_fp;
-  time_fp = fopen(_align_directory, "a");
+  if (_use_gpu == true)
+    time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/align_gpu.csv", "a");
+  else
+    time_fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matcihng/align_cpu.csv", "a");
   
   if (map_loaded == 1 && init_pos_set == 1)
   {

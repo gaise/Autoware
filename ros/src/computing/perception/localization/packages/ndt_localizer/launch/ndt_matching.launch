@@ -13,8 +13,6 @@
   <arg name="use_gpu" default="true" />
   <arg name="sync" default="false" />
   <arg name="imu_topic" default="/imu_raw" />
-  <arg name="sit_directory" default="/home/autoware/sandbox/autoware-gaise/time/matching/sit_gpu.csv" />
-  <arg name="algin_directory" default="/home/autoware/sandbox/autoware-gaise/time/matching/align_gpu.csv" />
 
   <node pkg="ndt_localizer" type="ndt_matching" name="ndt_matching" output="log">
     <param name="use_gnss" value="$(arg use_gnss)" />
@@ -28,8 +26,6 @@
     <param name="use_local_transform" value="$(arg use_local_transform)" />
     <param name="use_gpu" value="$(arg use_gpu)" />
     <param name="imu_topic" value="$(arg imu_topic)" />
-    <param name="sit_directory" value="$(arg sit_directory)" />
-    <param name="align_directory" value="$(arg align_directory)" />
     <remap from="/points_raw" to="/sync_drivers/points_raw" if="$(arg sync)" />
   </node>
 
