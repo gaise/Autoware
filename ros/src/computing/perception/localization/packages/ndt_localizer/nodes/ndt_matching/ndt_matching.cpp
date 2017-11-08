@@ -211,6 +211,8 @@ static std_msgs::Float32 ndt_reliability;
 
 #ifdef CUDA_FOUND
 static bool _use_gpu = false;
+static char _sit_directory[256] = "/home/";
+static char _align_directory[256] = "/home/";
 #endif
 #ifdef USE_FAST_PCL
 static bool _use_openmp = false;
@@ -388,6 +390,13 @@ static void param_callback(const autoware_msgs::ConfigNdt::ConstPtr& input)
 
 static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+  // measurement
+  std::chrono::time_point<std::chrono::system_clock> sit_start, sit_end;
+  double sit_time;
+  FILE *time_fp;
+  time_fp = fopen(_sit_directory, "a");
+  int points_num;
+  
   if (map_loaded == 0)
   {
     // Convert the data type(from sensor_msgs to pcl).
@@ -411,11 +420,17 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     }
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZ>(map));
+    points_num = map_ptr->size();
 // Setting point cloud to be aligned to.
 #ifdef CUDA_FOUND
     if (_use_gpu == true)
     {
+      // measurement
+      sit_start = std::chrono::system_clock::now();
       gpu_ndt.setInputTarget(map_ptr);
+      sit_end = std::chrono::system_clock::now();
+      sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
+      
       gpu_ndt.setMaximumIterations(max_iter);
       gpu_ndt.setResolution(ndt_res);
       gpu_ndt.setStepSize(step_size);
@@ -424,7 +439,12 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     else
     {
 #endif
+      // measurement
+      sit_start = std::chrono::system_clock::now();
       ndt.setInputTarget(map_ptr);
+      sit_end = std::chrono::system_clock::now();
+      sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
+      
       ndt.setMaximumIterations(max_iter);
       ndt.setResolution(ndt_res);
       ndt.setStepSize(step_size);
@@ -433,6 +453,11 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     }
 #endif
     map_loaded = 1;
+
+    // measurement
+    fprintf(time_fp, "%d,%lf\n", points_num, sit_time);
+    fflush(time_fp);
+    fclose(time_fp);
   }
 }
 
@@ -788,6 +813,10 @@ static void imu_callback(const sensor_msgs::Imu::Ptr& input)
 
 static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+  // measurement
+  FILE *time_fp;
+  time_fp = fopen(_align_directory, "a");
+  
   if (map_loaded == 1 && init_pos_set == 1)
   {
     matching_start = std::chrono::system_clock::now();
@@ -1235,6 +1264,11 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     exe_time = std::chrono::duration_cast<std::chrono::microseconds>(matching_end - matching_start).count() / 1000.0;
     time_ndt_matching.data = exe_time;
     time_ndt_matching_pub.publish(time_ndt_matching);
+
+    // measurement
+    fprintf(time_fp, "%d,%lf,%lf\n", scan_points_num, exe_time, align_time);
+    fflush(time_fp);
+    fclose(time_fp);
 
     // Set values for /estimate_twist
     estimate_twist_msg.header.stamp = current_scan_time;
