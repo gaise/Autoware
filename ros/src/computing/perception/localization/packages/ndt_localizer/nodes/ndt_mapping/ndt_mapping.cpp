@@ -67,13 +67,13 @@
 #endif
 
 
-#ifndef USE_FAST_PCL
-  #include <fast_pcl/filters/voxel_grid.h>
-  #include <fast_pcl/registration/ndt.h>
-#else
-  #include <pcl/filters/voxel_grid.h>
-  #include <pcl/registration/ndt.h>
-#endif
+// #ifndef USE_FAST_PCL
+//   #include <fast_pcl/filters/voxel_grid.h>
+//   #include <fast_pcl/registration/ndt.h>
+// #else
+//   #include <pcl/filters/voxel_grid.h>
+//   #include <pcl/registration/ndt.h>
+// #endif
 
 #ifdef CUDA_FOUND
   #include <fast_pcl/ndt_gpu/NormalDistributionsTransform.h>
@@ -87,8 +87,8 @@
 
 
 #include <fast_pcl/ndt_cpu/NormalDistributionsTransform.h>
-#include <fast_pcl/filters/voxel_grid.h> //??
-#include <fast_pcl/registration/ndt.h>	//??
+// #include <fast_pcl/filters/voxel_grid.h> //??
+// #include <fast_pcl/registration/ndt.h>	//??
 
 
 struct pose
