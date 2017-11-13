@@ -522,6 +522,9 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     }
 #endif
     map_loaded = 1;
+    fprintf(time_fp, "%d,%lf\n", points_num, sit_time);
+    fflush(time_fp);
+    fclose(time_fp);
   }
 }
 
