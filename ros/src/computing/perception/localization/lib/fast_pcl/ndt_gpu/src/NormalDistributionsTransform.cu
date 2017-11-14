@@ -261,7 +261,7 @@ namespace gpu {
     double gauss_c1, gauss_c2, gauss_d3;
 
     if (!flag) {
-      fp = fopen("/home/autoware/sandbox/res/var.txt", "w");
+      fp = fopen("/home/nvidia/tomoya/var.txt", "w");
       fprintf(fp, "line: %d\n", __LINE__);
       fprintf(fp, "%f,%f,%f,%f\n", guess(0,0), guess(0,1), guess(0,2), guess(0,3));
       fprintf(fp, "%f,%f,%f,%f\n", guess(1,0), guess(1,1), guess(1,2), guess(1,3));
@@ -359,16 +359,41 @@ namespace gpu {
       }
 
       delta_p.normalize();
-      delta_p_norm = computeStepLengthMT(p, delta_p, delta_p_norm, step_size_, transformation_epsilon_ / 2, score, score_gradient, hessian, trans_x_, trans_y_, trans_z_, points_number_);
-      delta_p *= delta_p_norm;
-
+      
       if (!flag) {
 	fprintf(fp, "line: %d\n", __LINE__);
+	fprintf(fp, "computeStepLengthMT\n");
+	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", p(0,0), p(1,0), p(2,0), p(3,0), p(4,0), p(5,0));
 	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", delta_p(0,0), delta_p(1,0), delta_p(2,0), delta_p(3,0), delta_p(4,0), delta_p(5,0));
 	fprintf(fp, "%lf\n", delta_p_norm);
+	fprintf(fp, "step size: %lf\n", step_size_);
+	fprintf(fp, "%lf\n", transformation_epsilon_);
 	fprintf(fp, "%lf\n", score);
+	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", score_gradient(0,0), score_gradient(1,0), score_gradient(2,0), score_gradient(3,0), score_gradient(4,0), score_gradient(5,0));
+	fprintf(fp, "hessian\n");
+	for (int i = 0; i < 6; i++) {
+	  fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", hessian(i,0), hessian(i,1), hessian(i,2), hessian(i,3), hessian(i,4), hessian(i,5));
+	}
+	fprintf(fp, "%d\n", points_number_);
+	float *h_trans = (float*)malloc(sizeof(float)*points_number_);
+	checkCudaErrors(cudaMemcpy(h_trans, trans_x_, sizeof(float)*points_number_, cudaMemcpyDeviceToHost));
+	for (int i = 0; i < points_number_; i++) {
+	  fprintf(fp, "%f\n", h_trans[i]);
+	}
+	checkCudaErrors(cudaMemcpy(h_trans, trans_y_, sizeof(float)*points_number_, cudaMemcpyDeviceToHost));	
+	for (int i = 0; i < points_number_; i++) {
+	  fprintf(fp, "%f\n", h_trans[i]);
+	}
+	checkCudaErrors(cudaMemcpy(h_trans, trans_z_, sizeof(float)*points_number_, cudaMemcpyDeviceToHost));	
+	for (int i = 0; i < points_number_; i++) {
+	  fprintf(fp, "%f\n", h_trans[i]);
+	}
+	free(h_trans);
 	fprintf(fp, "\n\n");
       }
+      
+      delta_p_norm = computeStepLengthMT(p, delta_p, delta_p_norm, step_size_, transformation_epsilon_ / 2, score, score_gradient, hessian, trans_x_, trans_y_, trans_z_, points_number_);
+      delta_p *= delta_p_norm;
       
       transformation_ = (Eigen::Translation<float, 3>(static_cast<float>(delta_p(0)), static_cast<float>(delta_p(1)), static_cast<float>(delta_p(2))) *
 			 Eigen::AngleAxis<float>(static_cast<float>(delta_p(3)), Eigen::Vector3f::UnitX()) *
