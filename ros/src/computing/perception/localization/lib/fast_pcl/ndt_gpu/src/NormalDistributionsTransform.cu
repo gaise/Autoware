@@ -261,7 +261,7 @@ namespace gpu {
     double gauss_c1, gauss_c2, gauss_d3;
 
     if (!flag) {
-      fp = fopen("/home/nvidia/tomoya/var.txt", "w");
+      fp = fopen("/home/autoware/sandbox/autoware-gaise/ros/debug_data/var.txt", "w");
       fprintf(fp, "line: %d\n", __LINE__);
       fprintf(fp, "%f,%f,%f,%f\n", guess(0,0), guess(0,1), guess(0,2), guess(0,3));
       fprintf(fp, "%f,%f,%f,%f\n", guess(1,0), guess(1,1), guess(1,2), guess(1,3));
@@ -1555,6 +1555,8 @@ namespace gpu {
 							    Eigen::Matrix<double, 6, 1> &score_gradient, Eigen::Matrix<double, 6, 6> &hessian,
 							    float *trans_x, float *trans_y, float *trans_z, int points_num)
   {
+    static int flag = 0;
+    FILE *fp;
     double phi_0 = -score;
     double d_phi_0 = -(score_gradient.dot(step_dir));
 
@@ -1596,9 +1598,63 @@ namespace gpu {
 			     Eigen::AngleAxis<float>(static_cast<float>(x_t(4)), Eigen::Vector3f::UnitY()) *
 			     Eigen::AngleAxis<float>(static_cast<float>(x_t(5)), Eigen::Vector3f::UnitZ())).matrix();
 
+    float *h_x, *h_y, *h_z;
+
+    if (!flag) {
+      fp = fopen("/home/autoware/sandbox/autoware-gaise/ros/debug_data/step.txt", "w");
+      fprintf(fp, "final_transformation: \n");
+      for (int i = 0; i < 4; i++) {
+	fprintf(fp, "%f, %f, %f, %f\n", final_transformation_(i,0), final_transformation_(i,1), final_transformation_(i,2), final_transformation_(i,3));
+      }
+      fprintf(fp, "\n");
+      h_x = (float*)malloc(sizeof(float)*points_num);
+      h_y = (float*)malloc(sizeof(float)*points_num);
+      h_z = (float*)malloc(sizeof(float)*points_num);
+      checkCudaErrors(cudaMemcpy(h_x, x_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      checkCudaErrors(cudaMemcpy(h_y, x_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      checkCudaErrors(cudaMemcpy(h_z, x_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      for (int i = 0; i < points_num; i++) {
+	fprintf(fp, "%f, %f, %f\n", h_x[i], h_y[i], h_z[i]);
+      }
+      fprintf(fp, "\n");
+      checkCudaErrors(cudaMemcpy(h_x, trans_x_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      checkCudaErrors(cudaMemcpy(h_y, trans_y_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      checkCudaErrors(cudaMemcpy(h_z, trans_z_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      for (int i = 0; i < points_num; i++) {
+	fprintf(fp, "%f, %f, %f\n", h_x[i], h_y[i], h_z[i]);
+      }
+      fprintf(fp, "\n\n");
+    }
+
     transformPointCloud(x_, y_, z_, trans_x, trans_y, trans_z, points_num, final_transformation_);
 
+    if (!flag) {
+      checkCudaErrors(cudaMemcpy(h_x, x_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      checkCudaErrors(cudaMemcpy(h_y, x_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      checkCudaErrors(cudaMemcpy(h_z, x_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      for (int i = 0; i < points_num; i++) {
+	fprintf(fp, "%f, %f, %f\n", h_x[i], h_y[i], h_z[i]);
+      }
+      fprintf(fp, "\n");
+      checkCudaErrors(cudaMemcpy(h_x, trans_x_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      checkCudaErrors(cudaMemcpy(h_y, trans_y_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      checkCudaErrors(cudaMemcpy(h_z, trans_z_, sizeof(float)*points_num, cudaMemcpyDeviceToHost));
+      for (int i = 0; i < points_num; i++) {
+	fprintf(fp, "%f, %f, %f\n", h_x[i], h_y[i], h_z[i]);
+      }
+      fprintf(fp, "\n\n");
+      free(h_x);
+      free(h_y);
+      free(h_z);
+    }
+
     score = computeDerivatives(score_gradient, hessian, trans_x, trans_y, trans_z, points_num, x_t);
+
+    if (!flag) {
+      fprintf(fp, "score: %lf\n", score);
+      fclose(fp);
+      flag = 1;
+    }
 
     double phi_t = -score;
     double d_phi_t = -(score_gradient.dot(step_dir));
