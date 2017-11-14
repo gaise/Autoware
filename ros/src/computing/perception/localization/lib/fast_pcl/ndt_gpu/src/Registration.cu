@@ -234,20 +234,33 @@ namespace gpu {
 
   void GRegistration::setInputSource(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
   {
+    char readline[256];
+    FILE *fp = fopen("/home/autoware/sandbox/res/scan_points.txt", "r");
+    fgets(readline, 256, fp);
+    points_number_ = atoi(readline);
+
     //Convert point cloud to float x, y, z
     if (input->size() > 0) {
-      points_number_ = input->size();
+      // points_number_ = input->size();
 
       pcl::PointXYZ *tmp;
 
       checkCudaErrors(cudaMalloc(&tmp, sizeof(pcl::PointXYZ) * points_number_));
 
-      pcl::PointXYZ *host_tmp = input->points.data();
+      pcl::PointXYZ *host_tmp = (pcl::PointXYZ*)malloc(sizeof(pcl::PointXYZ)*points_number_)/* = input->points.data()*/;
+      for (int i = 0; i < points_number_; i++) {
+	fgets(readline, 256, fp);
+	sscanf(readline, "%f,%f,%f", &host_tmp[i].x, &host_tmp[i].y, &host_tmp[i].z);
+      }
 
+      fclose(fp);
+      
       // Pin the host buffer for accelerating the memory copy
       // checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZ) * points_number_, cudaHostRegisterDefault));
 
       checkCudaErrors(cudaMemcpy(tmp, host_tmp, sizeof(pcl::PointXYZ) * points_number_, cudaMemcpyHostToDevice));
+
+      free(host_tmp);
 
       if (x_ != NULL) {
 	checkCudaErrors(cudaFree(x_));
@@ -353,19 +366,33 @@ namespace gpu {
   }
 
   void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
-  {
+  { 
     if (input->size() > 0) {
-      target_points_number_ = input->size();
+      char readline[256];
+      FILE *fp = fopen("/home/autoware/sandbox/res/map_points.txt", "r");
+      fgets(readline, 256, fp);
+      target_points_number_ = atoi(readline);
+
+      // target_points_number_ = input->size();
 
       pcl::PointXYZ *tmp;
 
       checkCudaErrors(cudaMalloc(&tmp, sizeof(pcl::PointXYZ) * target_points_number_));
 
-      pcl::PointXYZ *host_tmp = input->points.data();
+      pcl::PointXYZ *host_tmp = (pcl::PointXYZ*)malloc(sizeof(pcl::PointXYZ)*target_points_number_)/* = input->points.data() */;
+
+      for (int i = 0; i < target_points_number_; i++) {
+	fgets(readline, 256, fp);
+	sscanf(readline, "%f,%f,%f", &host_tmp[i].x, &host_tmp[i].y, &host_tmp[i].z);
+      }
+
+      fclose(fp);
 
       // checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZ) * target_points_number_, cudaHostRegisterDefault));
 
       checkCudaErrors(cudaMemcpy(tmp, host_tmp, sizeof(pcl::PointXYZ) * target_points_number_, cudaMemcpyHostToDevice));
+      
+      free(host_tmp);
 
       if (target_x_ != NULL) {
 	checkCudaErrors(cudaFree(target_x_));
@@ -399,18 +426,7 @@ namespace gpu {
   }
 
   void GRegistration::align(const Eigen::Matrix<float, 4, 4> &guess)
-  {
-    // debug
-    FILE *fp = fopen("/home/nvidia/tomoya/debug.txt", "a");
-    fprintf(fp, "align\n");
-    fprintf(fp, "%f %f %f %f\n", guess(0,0), guess(0,1), guess(0,2), guess(0,3));
-    fprintf(fp, "%f %f %f %f\n", guess(1,0), guess(1,1), guess(1,2), guess(1,3));
-    fprintf(fp, "%f %f %f %f\n", guess(2,0), guess(2,1), guess(2,2), guess(2,3));
-    fprintf(fp, "%f %f %f %f\n", guess(3,0), guess(3,1), guess(3,2), guess(3,3));
-    fprintf(fp, "\n");
-    fclose(fp);
-    // end
-    
+  { 
     converged_ = false;
 
     final_transformation_ = transformation_ = previous_transformation_ = Eigen::Matrix<float, 4, 4>::Identity();

@@ -251,22 +251,25 @@ namespace gpu {
 
   void GNormalDistributionsTransform::computeTransformation(const Eigen::Matrix<float, 4, 4> &guess)
   {
-    // debug
-    FILE *fp = fopen("/home/nvidia/tomoya/debug.txt", "a");
-    fprintf(fp, "computeTransformation\n");
-    fprintf(fp, "%f %f %f %f\n", guess(0,0), guess(0,1), guess(0,2), guess(0,3));
-    fprintf(fp, "%f %f %f %f\n", guess(1,0), guess(1,1), guess(1,2), guess(1,3));
-    fprintf(fp, "%f %f %f %f\n", guess(2,0), guess(2,1), guess(2,2), guess(2,3));
-    fprintf(fp, "%f %f %f %f\n", guess(3,0), guess(3,1), guess(3,2), guess(3,3));
-    fprintf(fp, "\n");
-    // end
-    
+    static int flag = 0;
+    FILE* fp;
     struct timeval start, end;
-
+    
     nr_iterations_ = 0;
     converged_ = false;
 
     double gauss_c1, gauss_c2, gauss_d3;
+
+    if (!flag) {
+      fp = fopen("/home/autoware/sandbox/res/var.txt", "w");
+      fprintf(fp, "line: %d\n", __LINE__);
+      fprintf(fp, "%f,%f,%f,%f\n", guess(0,0), guess(0,1), guess(0,2), guess(0,3));
+      fprintf(fp, "%f,%f,%f,%f\n", guess(1,0), guess(1,1), guess(1,2), guess(1,3));
+      fprintf(fp, "%f,%f,%f,%f\n", guess(2,0), guess(2,1), guess(2,2), guess(2,3));
+      fprintf(fp, "%f,%f,%f,%f\n", guess(3,0), guess(3,1), guess(3,2), guess(3,3));
+      fprintf(fp, "\n\n");
+    }
+      
 
     gauss_c1 = 10 * ( 1 - outlier_ratio_);
     gauss_c2 = outlier_ratio_ / pow(resolution_, 3);
@@ -274,28 +277,38 @@ namespace gpu {
     gauss_d1_ = -log(gauss_c1 + gauss_c2) - gauss_d3;
     gauss_d2_ = -2 * log((-log(gauss_c1 * exp(-0.5) + gauss_c2) - gauss_d3) / gauss_d1_);
 
+    if (!flag) {
+      fprintf(fp, "line: %d\n", __LINE__);
+      fprintf(fp, "gauss_d1_ : %lf\n", gauss_d1_);
+      fprintf(fp, "gauss_d2_ : %lf\n", gauss_d2_);
+      fprintf(fp, "\n\n");
+    }
+
     if (guess != Eigen::Matrix4f::Identity()) {
       final_transformation_ = guess;
 
       transformPointCloud(x_, y_, z_, trans_x_, trans_y_, trans_z_, points_number_, guess);
-    }
 
-    // debug
-    int i;
-    float *debug_x, *debug_trans_x;
-    debug_x = (float*)malloc(sizeof(float) * points_number_);
-    debug_trans_x = (float*)malloc(sizeof(float) * points_number_);
-    checkCudaErrors(cudaMemcpy(debug_x, x_, sizeof(float) * points_number_, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(debug_trans_x, trans_x_, sizeof(float) * points_number_, cudaMemcpyDeviceToHost));
-    fprintf(fp, "after transformPointCloud (line: %d)\n", __LINE__);
-    for (i = 0; i < points_number_; i++) {
-      fprintf(fp, "%f %f\n", debug_x[i], debug_trans_x[i]);
-    }
-    fprintf(fp, "\n");
+      if (!flag) {
+	fprintf(fp, "line: %d\n", __LINE__);
+	float *h_x = (float*)malloc(sizeof(float)*points_number_);
+	float *h_trans_x = (float*)malloc(sizeof(float)*points_number_);
+	checkCudaErrors(cudaMemcpy(h_x, x_, sizeof(float)*points_number_, cudaMemcpyDeviceToHost));
+	checkCudaErrors(cudaMemcpy(h_trans_x, trans_x_, sizeof(float)*points_number_, cudaMemcpyDeviceToHost));
+	for (int i = 0; i < points_number_; i++) {
+	  fprintf(fp, "%f, %f\n", h_x[i], h_trans_x[i]);
+	}
+	free(h_x);
+	free(h_trans_x);
+	fprintf(fp, "\n\n");
+	fprintf(fp, "%f,%f,%f,%f\n", guess(0,0), guess(0,1), guess(0,2), guess(0,3));
+	fprintf(fp, "%f,%f,%f,%f\n", guess(1,0), guess(1,1), guess(1,2), guess(1,3));
+	fprintf(fp, "%f,%f,%f,%f\n", guess(2,0), guess(2,1), guess(2,2), guess(2,3));
+	fprintf(fp, "%f,%f,%f,%f\n", guess(3,0), guess(3,1), guess(3,2), guess(3,3));
+	fprintf(fp, "\n\n");
+      }
 
-    free(debug_x);
-    free(debug_trans_x);
-    // end
+    }
 
     Eigen::Transform<float, 3, Eigen::Affine, Eigen::ColMajor> eig_transformation;
     eig_transformation.matrix() = final_transformation_;
@@ -315,15 +328,6 @@ namespace gpu {
     score = computeDerivatives(score_gradient, hessian, trans_x_, trans_y_, trans_z_, points_number_, p);
     gettimeofday(&end, NULL);
 
-    // debug
-    fprintf(fp, "after computeDerivatives (line: %d)\n", __LINE__);
-    fprintf(fp, "%lf %lf %lf %lf %lf %lf\n", score_gradient(0,0), score_gradient(1,0), score_gradient(2,0), score_gradient(3,0), score_gradient(4,0), score_gradient(5,0));
-    for (i = 0; i < 6; i++) {
-      fprintf(fp, "%lf %lf %lf %lf %lf %lf\n", hessian(i,0), hessian(i,1), hessian(i,2), hessian(i,3), hessian(i,4), hessian(i,5));
-    }
-    fprintf(fp, "\n");
-    // end
-
     gettimeofday(&start, NULL);
     while (!converged_) {
       previous_transformation_ = transformation_;
@@ -334,16 +338,23 @@ namespace gpu {
 
       delta_p_norm = delta_p.norm();
 
+      if (!flag) {
+	fprintf(fp, "line: %d\n", __LINE__);
+	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", delta_p(0,0), delta_p(1,0), delta_p(2,0), delta_p(3,0), delta_p(4,0), delta_p(5,0));
+	fprintf(fp, "%lf\n", delta_p_norm);
+	fprintf(fp, "%lf\n", score);
+	fprintf(fp, "\n\n");
+      }
+
       if (delta_p_norm == 0 || delta_p_norm != delta_p_norm) {
 
 	trans_probability_ = score / static_cast<double>(points_number_);
 	converged_ = delta_p_norm == delta_p_norm;
 
-	// debug
-	fprintf(fp, "after trans_probability (line: %d)\n", __LINE__);
-	fprintf(fp, "trans_probability: %lf\n", trans_probability_);
-	fprintf(fp, "\n\n---------------------------\n\n");
-	// end
+	if (!flag) {
+	  flag = 1;
+	  fclose(fp);
+	}
 	return;
       }
 
@@ -351,14 +362,13 @@ namespace gpu {
       delta_p_norm = computeStepLengthMT(p, delta_p, delta_p_norm, step_size_, transformation_epsilon_ / 2, score, score_gradient, hessian, trans_x_, trans_y_, trans_z_, points_number_);
       delta_p *= delta_p_norm;
 
-      // debug
-      fprintf(fp, "after computeStepLengthMT (line: %d)\n", __LINE__);
-      fprintf(fp, "%lf %lf %lf %lf %lf %lf\n", score_gradient(0,0), score_gradient(1,0), score_gradient(2,0), score_gradient(3,0), score_gradient(4,0), score_gradient(5,0));
-      for (i = 0; i < 6; i++) {
-	fprintf(fp, "%lf %lf %lf %lf %lf %lf\n", hessian(i,0), hessian(i,1), hessian(i,2), hessian(i,3), hessian(i,4), hessian(i,5));
+      if (!flag) {
+	fprintf(fp, "line: %d\n", __LINE__);
+	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", delta_p(0,0), delta_p(1,0), delta_p(2,0), delta_p(3,0), delta_p(4,0), delta_p(5,0));
+	fprintf(fp, "%lf\n", delta_p_norm);
+	fprintf(fp, "%lf\n", score);
+	fprintf(fp, "\n\n");
       }
-      fprintf(fp, "delta_p_norm: %lf\n\n", delta_p_norm);
-      // end
       
       transformation_ = (Eigen::Translation<float, 3>(static_cast<float>(delta_p(0)), static_cast<float>(delta_p(1)), static_cast<float>(delta_p(2))) *
 			 Eigen::AngleAxis<float>(static_cast<float>(delta_p(3)), Eigen::Vector3f::UnitX()) *
@@ -369,11 +379,6 @@ namespace gpu {
 
       //Not update visualizer
 
-      // debug
-      fprintf(fp, "before if\n");
-      fprintf(fp, "epsilon: %lf\n", transformation_epsilon_);
-      // end
-
       if (nr_iterations_ > max_iterations_ || (nr_iterations_ && (std::fabs(delta_p_norm) < transformation_epsilon_)))
 	converged_ = true;
 
@@ -382,11 +387,10 @@ namespace gpu {
     gettimeofday(&end, NULL);
 
     trans_probability_ = score / static_cast<double>(points_number_);
-    // debug
-    fprintf(fp, "after trans_probability (line: %d)\n", __LINE__);
-    fprintf(fp, "trans_probability: %lf\n", trans_probability_);
-    fprintf(fp, "\n\n---------------------------\n\n");
-    // end
+    if (!flag) {
+      flag = 1;
+      fclose(fp);
+    }
   }
 
   /* First step of computing point gradients */
