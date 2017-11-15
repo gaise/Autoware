@@ -1593,6 +1593,13 @@ namespace gpu {
 
     x_t = x + step_dir * a_t;
 
+    if (!flag) {
+      fp = fopen("/home/autoware/sandbox/autoware-gaise/ros/debug_data/step.txt", "w");
+      fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf, %lf\n", mu, nu, a_l, f_l, g_l, f_u, g_u);
+      fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", x_t(0), x_t(1), x_t(2), x_t(3), x_t(4), x_t(5));
+      fprintf(fp, "\n\n");
+    }
+
     final_transformation_ = (Eigen::Translation<float, 3>(static_cast<float>(x_t(0)), static_cast<float>(x_t(1)), static_cast<float>(x_t(2))) *
 			     Eigen::AngleAxis<float>(static_cast<float>(x_t(3)), Eigen::Vector3f::UnitX()) *
 			     Eigen::AngleAxis<float>(static_cast<float>(x_t(4)), Eigen::Vector3f::UnitY()) *
@@ -1601,7 +1608,6 @@ namespace gpu {
     float *h_x, *h_y, *h_z;
 
     if (!flag) {
-      fp = fopen("/home/autoware/sandbox/autoware-gaise/ros/debug_data/step.txt", "w");
       fprintf(fp, "final_transformation: \n");
       for (int i = 0; i < 4; i++) {
 	fprintf(fp, "%f, %f, %f, %f\n", final_transformation_(i,0), final_transformation_(i,1), final_transformation_(i,2), final_transformation_(i,3));
