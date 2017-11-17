@@ -417,6 +417,20 @@ namespace gpu {
 
       p = p + delta_p;
 
+      if (!flag) {
+	fprintf(fp, "line: %d\n", __LINE__);
+	fprintf(fp, "computeStepLengthMT\n");
+	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", p(0,0), p(1,0), p(2,0), p(3,0), p(4,0), p(5,0));
+	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", delta_p(0,0), delta_p(1,0), delta_p(2,0), delta_p(3,0), delta_p(4,0), delta_p(5,0));
+	fprintf(fp, "%lf\n", delta_p_norm);
+	fprintf(fp, "%lf\n", score);
+	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", score_gradient(0,0), score_gradient(1,0), score_gradient(2,0), score_gradient(3,0), score_gradient(4,0), score_gradient(5,0));
+	fprintf(fp, "hessian\n");
+	for (int i = 0; i < 6; i++) {
+	  fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", hessian(i,0), hessian(i,1), hessian(i,2), hessian(i,3), hessian(i,4), hessian(i,5));
+	}
+      }
+
       //Not update visualizer
 
       if (nr_iterations_ > max_iterations_ || (nr_iterations_ && (std::fabs(delta_p_norm) < transformation_epsilon_)))
@@ -1648,8 +1662,6 @@ namespace gpu {
 
     if (!flag) {
       fprintf(fp, "score: %lf\n", score);
-      fclose(fp);
-      flag = 1;
     }
 
     double phi_t = -score;
@@ -1720,6 +1732,17 @@ namespace gpu {
     }
 
     real_iterations_ += step_iterations;
+
+    if (!flag) {
+      fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", x_t(0), x_t(1), x_t(2), x_t(3), x_t(4), x_(5));
+      fprintf(fp, "hessian\n");
+      for (int = i = 0; i < 6; i++) {
+	fprintf(fp, "%lf, %lf, %lf, %lf, %lf, %lf\n", hessian(i,0), hessian(i,1), hessian(i,2), hessian(i,3), hessian(i,4), hessian(i,5));
+      }
+      fprintf(fp, "%lf\n", a_t);
+      fclose(fp);
+      flag = 1;
+    }
 
     return a_t;
   }
