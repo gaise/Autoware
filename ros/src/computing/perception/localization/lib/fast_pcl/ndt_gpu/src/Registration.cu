@@ -235,7 +235,7 @@ namespace gpu {
   void GRegistration::setInputSource(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
   {
     char readline[256];
-    FILE *fp = fopen("/home/nvidia/t_autoware/ros/debug_data/scan_points.txt", "r");
+    FILE *fp = fopen("/home/autoware/sandbox/autoware-gaise/ros/debug_data/scan_points.txt", "r");
     fgets(readline, 256, fp);
     points_number_ = atoi(readline);
 
@@ -369,7 +369,7 @@ namespace gpu {
   { 
     if (input->size() > 0) {
       char readline[256];
-      FILE *fp = fopen("/home/nvidia/t_autoware/ros/debug_data/map_points.txt", "r");
+      FILE *fp = fopen("/home/autoware/sandbox/autoware-gaise/ros/debug_data/map_points.txt", "r");
       fgets(readline, 256, fp);
       target_points_number_ = atoi(readline);
 
