@@ -13,6 +13,8 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
+#include <chrono>
+
 namespace gpu {
 class GRegistration {
 public:
@@ -45,6 +47,8 @@ public:
 
 	bool hasConverged() const;
 
+	double all_time_, mem_time_;
+
 	virtual ~GRegistration();
 protected:
 
@@ -72,6 +76,10 @@ protected:
 	int target_points_number_;
 
 	bool is_copied_;
+
+	/* for measure cudaMemcpy */
+	std::chrono::time_point<std::chrono::system_clock> all_start_, all_end_, mem_start_, mem_end_;
+
 };
 }
 

@@ -922,9 +922,12 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 #ifdef CUDA_FOUND
     if (_use_gpu == true)
     {
+      FILE* mem_fp_ = fopen("/home/autoware/sandbox/autoware-gaise/ros/time/memry.txt", "a");
       align_start = std::chrono::system_clock::now();
       gpu_ndt.align(init_guess);
       align_end = std::chrono::system_clock::now();
+      fprintf(mem_fp_, "%lf, %lf\n", all_time_, mem_time_);
+      fclose(mem_fp_);
 
       has_converged = gpu_ndt.hasConverged();
 

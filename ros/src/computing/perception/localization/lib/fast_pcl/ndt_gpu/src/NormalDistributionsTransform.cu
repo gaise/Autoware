@@ -4,6 +4,8 @@
 #include <iostream>
 #include <pcl/common/transforms.h>
 
+#include <chrono>
+
 namespace gpu {
 
 GNormalDistributionsTransform::GNormalDistributionsTransform()
@@ -946,8 +948,16 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 
 	double score_inc;
 
+	all_end_ = std::chrono::system_clock::now();
+	all_time_ += std::chrono::duration_cast<std::chrono::microseconds>(all_end_ - all_end_).count() / 1000.0;
+	mem_start_ = std::chrono::system_clock::now();
+	
 	checkCudaErrors(cudaMemcpy(&score_inc, score, sizeof(double), cudaMemcpyDeviceToHost));
 
+	mem_end_ = std::chrono::system_clock::now();
+	mem_time_ += std::chrono::duration_cast<std::chrono::microseconds>(mem_end_ - mem_start_).count() / 1000.0;
+	all_start_ = std::chrono::system_clock::now();
+	
 	checkCudaErrors(cudaFree(gradients));
 	checkCudaErrors(cudaFree(hessians));
 	checkCudaErrors(cudaFree(point_hessians));
@@ -1032,7 +1042,15 @@ void GNormalDistributionsTransform::computeAngleDerivatives(MatrixHost pose, boo
 	j_ang_(22) = cx * sy * cz - sx * sz;
 	j_ang_(23) = 0;
 
+	all_end_ = std::chrono::system_clock::now();
+	all_time_ += std::chrono::duration_cast<std::chrono::microseconds>(all_end_ - all_start_).count() / 1000.0;
+	mem_start_ = std::chrono::system_clock::now();
+
 	j_ang_.moveToGpu(dj_ang_);
+
+	mem_end_ = std::chrono::system_clock::now();
+	mem_time_ += std::chrono::duration_cast<std::chrono::microseconds>(mem_end_ - mem_start_).count() / 1000.0;
+	all_start_ = std::chrono::system_clock::now();
 
 	if (compute_hessian) {
 
@@ -1097,7 +1115,15 @@ void GNormalDistributionsTransform::computeAngleDerivatives(MatrixHost pose, boo
 		h_ang_(44) = 0;
 
 
+		all_end_ = std::chrono::system_clock::now();
+		all_time_ += std::chrono::duration_cast<std::chrono::microseconds>(all_end_ - all_start_).count() / 1000.0;
+		mem_start_ = std::chrono::system_clock::now();
+		
 		h_ang_.moveToGpu(dh_ang_);
+
+		mem_end_ = std::chrono::system_clock::now();
+		mem_time_ += std::chrono::duration_cast<std::chrono::microseconds>(mem_end_ - mem_start_).count() / 1000.0;
+		all_start_ = std::chrono::system_clock::now();
 	}
 
 }
@@ -1138,7 +1164,15 @@ void GNormalDistributionsTransform::transformPointCloud(float *in_x, float *in_y
 		}
 	}
 
+	all_end_ = std::chrono::system_clock::now();
+	all_time_ += std::chrono::duration_cast<std::chrono::microseconds>(all_end_ - all_start_).count() / 1000.0;
+	mem_start = std::chrono::system_clock::now();
+
 	htrans.moveToGpu(dtrans);
+
+	mem_end_ = std::chrono::system_clock::now();
+	mem_time_ += std::chrono::duration_cast<std::chrono::microseconds>(mem_end_ - mem_start_).count() / 1000.0;
+	all_start_ = std::chrono::system_clock::now();
 
 	if (points_number > 0) {
 		int block_x = (points_number <= BLOCK_SIZE_X) ? points_number : BLOCK_SIZE_X;
@@ -1542,7 +1576,15 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 	MatrixDevice dhessian(6, 6, valid_points_num, hessians);
 	MatrixHost hhessian(6, 6);
 
+	all_end_ = std::chrono::system_clock::now();
+	all_time_ += std::chrono::duration_cast<std::chorno::microseconds>(all_end_ - all_start_).count() / 1000.0;
+	mem_start_ = std::chrono::system_clock::now();
+	
 	hhessian.moveToHost(dhessian);
+
+	mem_end_ = std::chrono::system_clock::now();
+	mem_time_ += std::chrono::duration_cast<std::chrono::microseconds>(mem_end_ - mem_start_).count() / 1000.0;
+	all_start = std::chrono::system_clock::now();
 
 	for (int i = 0; i < 6; i++) {
 		for (int j = 0; j < 6; j++) {

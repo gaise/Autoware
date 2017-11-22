@@ -2,6 +2,8 @@
 #include "fast_pcl/ndt_gpu/debug.h"
 #include <iostream>
 
+#include <chrono>
+
 namespace gpu {
 
 GRegistration::GRegistration()
@@ -400,11 +402,16 @@ void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
 
 void GRegistration::align(const Eigen::Matrix<float, 4, 4> &guess)
 {
+  all_time_ = 0.0;
+  all_start_ = std::chrono::system_clock::now();
 	converged_ = false;
 
 	final_transformation_ = transformation_ = previous_transformation_ = Eigen::Matrix<float, 4, 4>::Identity();
 
 	computeTransformation(guess);
+
+	all_end_ = std::chrono::system_clock::now();
+	all_time_ += std::chrono::duration_cast<std::chrono::microseconds>(all_end_ - all_start).count() / 1000.0;
 }
 
 void GRegistration::computeTransformation(const Eigen::Matrix<float, 4, 4> &guess) {
