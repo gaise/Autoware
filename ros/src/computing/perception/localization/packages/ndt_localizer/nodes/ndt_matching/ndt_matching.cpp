@@ -842,6 +842,13 @@ static void imu_callback(const sensor_msgs::Imu::Ptr& input)
 
 static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+  // measurement
+  FILE* fp;
+  if (_use_gpu && _use_fast_pcl)
+    fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/align_gpu.csv", "a");
+  else if (_use_fast_pcl)
+    fp = fopen("/home/autoware/sandbox/autoware-gaise/time/matching/align_cpu.csv", "a");
+  
   if (map_loaded == 1 && init_pos_set == 1)
   {
     matching_start = std::chrono::system_clock::now();
@@ -1316,6 +1323,10 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     exe_time = std::chrono::duration_cast<std::chrono::microseconds>(matching_end - matching_start).count() / 1000.0;
     time_ndt_matching.data = exe_time;
     time_ndt_matching_pub.publish(time_ndt_matching);
+
+    // measurment
+    fprintf(fp, "%d,%lf,%lf\n", scan_points_num, exe_time, align_time);
+    fclose(fp);
 
     // Set values for /estimate_twist
     estimate_twist_msg.header.stamp = current_scan_time;
