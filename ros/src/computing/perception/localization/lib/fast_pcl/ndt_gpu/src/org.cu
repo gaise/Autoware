@@ -142,6 +142,7 @@ void GNormalDistributionsTransform::setInputTarget(pcl::PointCloud<pcl::PointXYZ
 
 void GNormalDistributionsTransform::computeTransformation(const Eigen::Matrix<float, 4, 4> &guess)
 {
+
 	nr_iterations_ = 0;
 	converged_ = false;
 
@@ -190,7 +191,6 @@ void GNormalDistributionsTransform::computeTransformation(const Eigen::Matrix<fl
 
 			trans_probability_ = score / static_cast<double>(points_number_);
 			converged_ = delta_p_norm == delta_p_norm;
-	       
 			return;
 		}
 
@@ -217,7 +217,6 @@ void GNormalDistributionsTransform::computeTransformation(const Eigen::Matrix<fl
 	}
 
 	trans_probability_ = score / static_cast<double>(points_number_);
-       
 }
 
 /* First step of computing point gradients */
@@ -1194,13 +1193,10 @@ double GNormalDistributionsTransform::computeStepLengthMT(const Eigen::Matrix<do
 
 	x_t = x + step_dir * a_t;
 
-	Eigen::AngleAxis<float> tmp1(static_cast<float>(x_t(3)), Eigen::Vector3f::UnitX());
-	Eigen::AngleAxis<float> tmp2(static_cast<float>(x_t(4)), Eigen::Vector3f::UnitY());
-	Eigen::AngleAxis<float> tmp3(static_cast<float>(x_t(5)), Eigen::Vector3f::UnitZ());
-	Eigen::AngleAxis<float> tmp4(tmp1 * tmp2 * tmp3);
-	Eigen::Translation<float, 3> transl(static_cast<float>(x_t(0)), static_cast<float>(x_t(1)), static_cast<float>(x_t(2)));
-
-	final_transformation_ = (transl * tmp4).matrix();
+	final_transformation_ = (Eigen::Translation<float, 3>(static_cast<float>(x_t(0)), static_cast<float>(x_t(1)), static_cast<float>(x_t(2))) *
+								Eigen::AngleAxis<float>(static_cast<float>(x_t(3)), Eigen::Vector3f::UnitX()) *
+								Eigen::AngleAxis<float>(static_cast<float>(x_t(4)), Eigen::Vector3f::UnitY()) *
+								Eigen::AngleAxis<float>(static_cast<float>(x_t(5)), Eigen::Vector3f::UnitZ())).matrix();
 
 	transformPointCloud(x_, y_, z_, trans_x, trans_y, trans_z, points_num, final_transformation_);
 
@@ -1228,7 +1224,7 @@ double GNormalDistributionsTransform::computeStepLengthMT(const Eigen::Matrix<do
 								 Eigen::AngleAxis<float>(static_cast<float>(x_t(3)), Eigen::Vector3f::UnitX()) *
 								 Eigen::AngleAxis<float>(static_cast<float>(x_t(4)), Eigen::Vector3f::UnitY()) *
 								 Eigen::AngleAxis<float>(static_cast<float>(x_t(5)), Eigen::Vector3f::UnitZ())).matrix();
-		
+
 		transformPointCloud(x_, y_, z_, trans_x, trans_y, trans_z, points_num, final_transformation_);
 
 		score = computeDerivatives(score_gradient, hessian, trans_x, trans_y, trans_z, points_num, x_t, false);

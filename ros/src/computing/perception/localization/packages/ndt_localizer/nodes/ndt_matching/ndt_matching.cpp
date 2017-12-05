@@ -842,6 +842,9 @@ static void imu_callback(const sensor_msgs::Imu::Ptr& input)
 
 static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+  FILE *deb_fp = fopen("/home/nvidia/t_autoware/ros/debug_data/callback.txt", "a");
+  fprintf(deb_fp, "---------------------------------\n");
+  
   if (map_loaded == 1 && init_pos_set == 1)
   {
     matching_start = std::chrono::system_clock::now();
@@ -916,6 +919,15 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     Eigen::AngleAxisf init_rotation_y(predict_pose_for_ndt.pitch, Eigen::Vector3f::UnitY());
     Eigen::AngleAxisf init_rotation_z(predict_pose_for_ndt.yaw, Eigen::Vector3f::UnitZ());
     Eigen::Matrix4f init_guess = (init_translation * init_rotation_z * init_rotation_y * init_rotation_x) * tf_btol;
+
+    fprintf(deb_fp, "predict_pose:\n");
+    fprintf(deb_fp, "%f %f %f %f %f %f\n\n", predict_pose_for_ndt.x, predict_pose_for_ndt.y, predict_pose_for_ndt.z, predict_pose_for_ndt.roll, predict_pose_for_ndt.pitch, predict_pose_for_ndt.yaw);
+    fprintf(deb_fp, "init_guess:\n");
+    for (int i = 0; i < 4; i++) {
+      fprintf(deb_fp, "%f\t%f\t%f\t%f\n", init_guess(i,0), init_guess(i,1), init_guess(i,2), init_guess(i,3));
+    }
+    fprintf(deb_fp, "\n---------------------------------\n");
+    fclose(deb_fp);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -1561,6 +1573,15 @@ int main(int argc, char** argv)
   Eigen::AngleAxisf rot_y_btol(_tf_pitch, Eigen::Vector3f::UnitY());
   Eigen::AngleAxisf rot_z_btol(_tf_yaw, Eigen::Vector3f::UnitZ());
   tf_btol = (tl_btol * rot_z_btol * rot_y_btol * rot_x_btol).matrix();
+
+  FILE *deb = fopen("/home/nvidia/t_autoware/ros/debug_data/btol.txt", "a");
+  fprintf(deb, "tf:\n");
+  fprintf(deb, "%f %f %f %f %f %f\n", _tf_x, _tf_y, _tf_z, _tf_roll, _tf_pitch, _tf_yaw);
+  fprintf(deb, "tf_btol:\n");
+  for (int i = 0; i < 4; i++) {
+    fprintf(deb, "%f\t%f\t%f\t%f\n", tf_btol(i,0), tf_btol(i,1), tf_btol(i,2), tf_btol(i,3));
+  }
+  fclose(deb);
 
   // Updated in initialpose_callback or gnss_callback
   initial_pose.x = 0.0;
