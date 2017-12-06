@@ -401,11 +401,19 @@ void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
 
 void GRegistration::align(const Eigen::Matrix<float, 4, 4> &guess)
 {
+	resetTime_a();
+	startTimer_a();
+	
 	converged_ = false;
 
 	final_transformation_ = transformation_ = previous_transformation_ = Eigen::Matrix<float, 4, 4>::Identity();
 
 	computeTransformation(guess);
+
+	endTimer_a();
+	FILE *fp = fopen("/home/nvidia/tomoya/time/matching/inner_gpu.csv", "a");
+	fprintf(fp, "%lf\n", getTime_a());
+	fclose(fp);
 }
 
 void GRegistration::computeTransformation(const Eigen::Matrix<float, 4, 4> &guess) {
@@ -428,7 +436,7 @@ void GRegistration::endTimer_a()
   a_time_ += std::chrono::duration_cast<std::chrono::microseconds>(a_end_ - a_start_).count() / 1000.0;
 }
 
-double GRegistration::getTime()
+double GRegistration::getTime_a()
 {
   return a_time_;
 }

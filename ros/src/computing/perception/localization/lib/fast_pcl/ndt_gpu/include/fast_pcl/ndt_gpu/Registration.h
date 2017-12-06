@@ -1,4 +1,4 @@
-A#ifndef GNDT_H_
+#ifndef GNDT_H_
 #define GNDT_H_
 
 #include <cuda.h>
@@ -50,7 +50,7 @@ public:
 	void resetTime_a();
 	void startTimer_a();
 	void endTimer_a();
-	double getTime();
+	double getTime_a();
 
 	virtual ~GRegistration();
 protected:
