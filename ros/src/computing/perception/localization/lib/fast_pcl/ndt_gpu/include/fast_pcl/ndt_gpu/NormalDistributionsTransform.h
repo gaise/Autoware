@@ -1,4 +1,4 @@
-#ifndef GPU_NDT_H_
+A#ifndef GPU_NDT_H_
 #define GPU_NDT_H_
 
 #include <cuda.h>
@@ -101,6 +101,7 @@ private:
 
 
 	GVoxelGrid voxel_grid_;
+
 };
 }
 

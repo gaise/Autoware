@@ -1,6 +1,7 @@
 #include "fast_pcl/ndt_gpu/Registration.h"
 #include "fast_pcl/ndt_gpu/debug.h"
 #include <iostream>
+#include <chrono>
 
 namespace gpu {
 
@@ -409,6 +410,27 @@ void GRegistration::align(const Eigen::Matrix<float, 4, 4> &guess)
 
 void GRegistration::computeTransformation(const Eigen::Matrix<float, 4, 4> &guess) {
 	printf("Unsupported by Registration\n");
+}
+
+void GRegistration::resetTime_a();
+{
+  a_time_ = 0.0;
+}
+
+void GRegistration::startTimer_a()
+{
+  a_start_ = std::chrono::system_clock::now();
+}
+
+void GRegistration::endTimer_a()
+{
+  a_end_ = std::chrono::system_clock::now();
+  a_time_ += std::chrono::duration_cast<std::chrono::microseconds>(a_end_ - a_start_).count() / 1000.0;
+}
+
+double GRegistration::getTime()
+{
+  return a_time_;
 }
 
 }

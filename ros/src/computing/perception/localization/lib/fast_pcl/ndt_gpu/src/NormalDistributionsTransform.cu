@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <pcl/common/transforms.h>
+#include <chrono>
 
 namespace gpu {
 

@@ -1,4 +1,4 @@
-#ifndef GNDT_H_
+A#ifndef GNDT_H_
 #define GNDT_H_
 
 #include <cuda.h>
@@ -12,6 +12,7 @@
 #include <velodyne_pointcloud/point_types.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <chrono>
 
 namespace gpu {
 class GRegistration {
@@ -45,6 +46,12 @@ public:
 
 	bool hasConverged() const;
 
+	/* Time measurement function */
+	void resetTime_a();
+	void startTimer_a();
+	void endTimer_a();
+	double getTime();
+
 	virtual ~GRegistration();
 protected:
 
@@ -72,6 +79,10 @@ protected:
 	int target_points_number_;
 
 	bool is_copied_;
+
+	/* Time measurement variable */
+	std::chrono::time_point<std::chrono::system_clock> a_start_, a_end_;
+	double a_time_;
 };
 }
 
