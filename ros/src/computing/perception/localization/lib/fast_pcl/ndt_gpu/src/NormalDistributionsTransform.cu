@@ -747,6 +747,7 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 
 	double *gradients, *hessians, *point_gradients, *point_hessians, *score;
 
+	startTimer_m();
 	checkCudaErrors(cudaMalloc(&gradients, sizeof(double) * valid_points_num * 6));
 	checkCudaErrors(cudaMalloc(&hessians, sizeof(double) * valid_points_num * 6 * 6));
 	checkCudaErrors(cudaMalloc(&point_gradients, sizeof(double) * valid_points_num * 3 * 6));
@@ -757,6 +758,7 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 	checkCudaErrors(cudaMemset(hessians, 0, sizeof(double) * valid_points_num * 6 * 6));
 	checkCudaErrors(cudaMemset(point_gradients, 0, sizeof(double) * valid_points_num * 3 * 6));
 	checkCudaErrors(cudaMemset(point_hessians, 0, sizeof(double) * valid_points_num * 18 * 6));
+	endTimer_m();
 
 	int block_x = (valid_points_num > BLOCK_SIZE_X) ? BLOCK_SIZE_X : valid_points_num;
 
@@ -764,6 +766,7 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 
 	dim3 grid;
 
+	startTimer_g();
 	computePointGradients<<<grid_x, block_x>>>(x_, y_, z_, points_number_,
 												valid_points, valid_points_num,
 												dj_ang_.buffer(),
@@ -809,10 +812,11 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 	}
 
 	checkCudaErrors(cudaDeviceSynchronize());
-
+	endTimer_g();
 
 	double *tmp_hessian;
 
+	startTimer_m();
 	checkCudaErrors(cudaMalloc(&tmp_hessian, sizeof(double) * valid_voxel_num * 6));
 
 	double *e_x_cov_x;
@@ -822,7 +826,9 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 	double *cov_dxd_pi;
 
 	checkCudaErrors(cudaMalloc(&cov_dxd_pi, sizeof(double) * valid_voxel_num * 3 * 6));
+	endTimer_m();
 
+	startTimer_g();
 	computeExCovX<<<grid_x, block_x>>>(trans_x, trans_y, trans_z, valid_points,
 										starting_voxel_id, voxel_id, valid_points_num,
 										centroid, centroid + voxel_num, centroid + 2 * voxel_num,
@@ -928,12 +934,15 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 	}
 
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
 
 	MatrixDevice dgrad(1, 6, valid_points_num, gradients), dhess(6, 6, valid_points_num, hessians);
 	MatrixHost hgrad(1, 6), hhess(6, 6);
 
+	startTimer_m();
 	hgrad.moveToHost(dgrad);
 	hhess.moveToHost(dhess);
+	endTimer_m();
 
 	for (int i = 0; i < 6; i++) {
 		score_gradient(i) = hgrad(i);
@@ -947,6 +956,7 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 
 	double score_inc;
 
+	startTimer_m();
 	checkCudaErrors(cudaMemcpy(&score_inc, score, sizeof(double), cudaMemcpyDeviceToHost));
 
 	checkCudaErrors(cudaFree(gradients));
@@ -968,6 +978,8 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 
 	if (starting_voxel_id != NULL)
 		checkCudaErrors(cudaFree(starting_voxel_id));
+
+	endTimer_m();
 
 	return score_inc;
 }
@@ -1139,18 +1151,24 @@ void GNormalDistributionsTransform::transformPointCloud(float *in_x, float *in_y
 		}
 	}
 
+	startTimer_m();
 	htrans.moveToGpu(dtrans);
+	endTimer_m();
 
 	if (points_number > 0) {
 		int block_x = (points_number <= BLOCK_SIZE_X) ? points_number : BLOCK_SIZE_X;
 		int grid_x = (points_number - 1) / block_x + 1;
 
+		startTimer_g();
 		gpuTransform<<<grid_x, block_x >>>(in_x, in_y, in_z, trans_x, trans_y, trans_z, points_number, dtrans);
 		checkCudaErrors(cudaGetLastError());
 		checkCudaErrors(cudaDeviceSynchronize());
+		endTimer_g();
 	}
 
+	startTimer_m();
 	dtrans.memFree();
+	endTimer_m();
 }
 
 double GNormalDistributionsTransform::computeStepLengthMT(const Eigen::Matrix<double, 6, 1> &x, Eigen::Matrix<double, 6, 1> &step_dir,
@@ -1393,6 +1411,7 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 	//Update score gradient and hessian matrix
 	double *hessians, *point_gradients, *point_hessians;
 
+	startTimer_m();
 	checkCudaErrors(cudaMalloc(&hessians, sizeof(double) * valid_points_num * 6 * 6));
 
 	checkCudaErrors(cudaMalloc(&point_gradients, sizeof(double) * valid_points_num * 3 * 6));
@@ -1402,11 +1421,13 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 	checkCudaErrors(cudaMemset(hessians, 0, sizeof(double) * valid_points_num * 6 * 6));
 	checkCudaErrors(cudaMemset(point_gradients, 0, sizeof(double) * valid_points_num * 3 * 6));
 	checkCudaErrors(cudaMemset(point_hessians, 0, sizeof(double) * valid_points_num * 18 * 6));
-
+	endTimer_m();
+	
 	int block_x = (valid_points_num > BLOCK_SIZE_X) ? BLOCK_SIZE_X : valid_points_num;
 	int grid_x = (valid_points_num - 1) / block_x + 1;
 	dim3 grid;
 
+	startTimer_g();
 	computePointGradients<<<grid_x, block_x>>>(x_, y_, z_, points_number_,
 												valid_points, valid_points_num,
 												dj_ang_.buffer(),
@@ -1447,9 +1468,11 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 												dh_ang_.buffer(),
 												point_hessians + valid_points_num * 95, point_hessians + valid_points_num * 101, point_hessians + valid_points_num * 107);
 	checkCudaErrors(cudaGetLastError());
+	endTimer_g();
 
 	double *tmp_hessian;
 
+	startTimer_m();
 	checkCudaErrors(cudaMalloc(&tmp_hessian, sizeof(double) * valid_voxel_num * 6));
 
 	double *e_x_cov_x;
@@ -1459,7 +1482,9 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 	double *cov_dxd_pi;
 
 	checkCudaErrors(cudaMalloc(&cov_dxd_pi, sizeof(double) * valid_voxel_num * 3 * 6));
+	endTimer_m();
 
+	startTimer_g();
 	computeExCovX<<<grid_x, block_x>>>(trans_x, trans_y, trans_z, valid_points,
 										starting_voxel_id, voxel_id, valid_points_num,
 										centroid, centroid + voxel_num, centroid + 2 * voxel_num,
@@ -1539,11 +1564,14 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 	}
 
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
 
 	MatrixDevice dhessian(6, 6, valid_points_num, hessians);
 	MatrixHost hhessian(6, 6);
 
+	startTimer_m();
 	hhessian.moveToHost(dhessian);
+	endTimer_m();
 
 	for (int i = 0; i < 6; i++) {
 		for (int j = 0; j < 6; j++) {
@@ -1551,6 +1579,7 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 		}
 	}
 
+	startTimer_m();
 	checkCudaErrors(cudaFree(hessians));
 	checkCudaErrors(cudaFree(point_hessians));
 	checkCudaErrors(cudaFree(point_gradients));
@@ -1572,6 +1601,7 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 	}
 
 	dhessian.memFree();
+	endTimer_m();
 }
 
 template <typename T>

@@ -400,45 +400,58 @@ void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
 }
 
 void GRegistration::align(const Eigen::Matrix<float, 4, 4> &guess)
-{
-	resetTime_a();
-	startTimer_a();
-	
+{	
 	converged_ = false;
 
 	final_transformation_ = transformation_ = previous_transformation_ = Eigen::Matrix<float, 4, 4>::Identity();
 
 	computeTransformation(guess);
-
-	endTimer_a();
-	FILE *fp = fopen("/home/nvidia/tomoya/time/matching/inner_gpu.csv", "a");
-	fprintf(fp, "%lf\n", getTime_a());
-	fclose(fp);
 }
 
 void GRegistration::computeTransformation(const Eigen::Matrix<float, 4, 4> &guess) {
 	printf("Unsupported by Registration\n");
 }
 
-void GRegistration::resetTime_a()
+void GRegistration::resetTime_m()
 {
-  a_time_ = 0.0;
+	m_time_ = 0.0;
 }
 
-void GRegistration::startTimer_a()
+void GRegistration::startTimer_m()
 {
-  a_start_ = std::chrono::system_clock::now();
+	m_start_ = std::chrono::system_clock::now();
 }
 
-void GRegistration::endTimer_a()
+void GRegistration::endTimer_m()
 {
-  a_end_ = std::chrono::system_clock::now();
-  a_time_ += std::chrono::duration_cast<std::chrono::microseconds>(a_end_ - a_start_).count() / 1000.0;
+	m_end_ = std::chrono::system_clock::now();
+	m_time_ += std::chrono::duration_cast<std::chrono::microseconds>(m_end_ - m_start_).count() / 1000.0;
 }
 
-double GRegistration::getTime_a()
+double GRegistration::getTime_m()
 {
-  return a_time_;
+	return m_time_;
+}
+
+void GRegistration::resetTime_g()
+{
+	g_time_ = 0.0;
+}
+
+void GRegistration::startTimer_g()
+{
+	g_start_ = std::chrono::system_clock::now();
+}
+
+void GRegistration::endTimer_g()
+{
+	g_end_ = std::chrono::system_clock::now();
+	g_time_ += std::chrono::duration_cast<std::chrono::microseconds>(g_end_ - g_start_).count() / 1000.0;
+}
+
+double GRegistration::getTime_g()
+{
+	return g_time_;
 }
 
 }
