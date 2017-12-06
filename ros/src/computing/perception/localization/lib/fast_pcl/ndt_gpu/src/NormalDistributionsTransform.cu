@@ -732,7 +732,11 @@ double GNormalDistributionsTransform::computeDerivatives(Eigen::Matrix<double, 6
 
 	valid_points = voxel_id = starting_voxel_id = NULL;
 
+	voxel_grid_.resetTime_m();
+	voxel_grid_.resetTime_g();
 	voxel_grid_.radiusSearch(trans_x, trans_y, trans_z, points_num, resolution_, INT_MAX, &valid_points, &starting_voxel_id, &voxel_id, &valid_voxel_num, &valid_points_num);
+	m_time_ += voxel_grid_.getTime_m();
+	g_time_ += voxel_grid_.getTime_g();
 
 	double *covariance = voxel_grid_.getCovarianceList();
 	double *inverse_covariance = voxel_grid_.getInverseCovarianceList();
@@ -1397,7 +1401,11 @@ void GNormalDistributionsTransform::computeHessian(Eigen::Matrix<double, 6, 6> &
 	int *valid_points, *voxel_id, *starting_voxel_id;
 	int valid_voxel_num, valid_points_num;
 	//Radius Search
+	voxel_grid_.resetTime_m();
+	voxel_grid_.resetTime_g();
 	voxel_grid_.radiusSearch(trans_x, trans_y, trans_z, points_num, resolution_, INT_MAX, &valid_points, &starting_voxel_id, &voxel_id, &valid_voxel_num, &valid_points_num);
+	m_time_ += voxel_grid_.getTime_m();
+	g_time_ += voxel_grid_.getTime_g();
 
 	double *centroid = voxel_grid_.getCentroidList();
 	double *covariance = voxel_grid_.getCovarianceList();
