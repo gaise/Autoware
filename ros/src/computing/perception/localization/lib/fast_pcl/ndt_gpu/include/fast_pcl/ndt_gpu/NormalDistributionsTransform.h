@@ -1,4 +1,4 @@
-A#ifndef GPU_NDT_H_
+#ifndef GPU_NDT_H_
 #define GPU_NDT_H_
 
 #include <cuda.h>

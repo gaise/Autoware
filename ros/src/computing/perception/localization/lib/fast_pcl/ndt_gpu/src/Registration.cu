@@ -420,7 +420,7 @@ void GRegistration::computeTransformation(const Eigen::Matrix<float, 4, 4> &gues
 	printf("Unsupported by Registration\n");
 }
 
-void GRegistration::resetTime_a();
+void GRegistration::resetTime_a()
 {
   a_time_ = 0.0;
 }
