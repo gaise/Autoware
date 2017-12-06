@@ -1711,7 +1711,7 @@ double GVoxelGrid::getTime_m()
 	return m_time_;
 }
 
-double GVoxelGrid::getTime_m()
+double GVoxelGrid::getTime_g()
 {
 	return m_time_;
 }

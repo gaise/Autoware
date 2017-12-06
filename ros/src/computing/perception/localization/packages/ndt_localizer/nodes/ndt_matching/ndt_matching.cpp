@@ -937,8 +937,8 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 					align_start = std::chrono::system_clock::now();
 					gpu_ndt.align(init_guess);
 					align_end = std::chrono::system_clock::now();
-					mem_time = getTime_m();
-					gpu_time = getTime_g();
+					mem_time = gpu_ndt.getTime_m();
+					gpu_time = gpu_ndt.getTime_g();
 
 					has_converged = gpu_ndt.hasConverged();
 
@@ -1332,7 +1332,7 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 			time_ndt_matching_pub.publish(time_ndt_matching);
 
 			// measurement
-			fprintf(fp, "%d,%lf,%lf\n", scan_points_num, exe_time, align_time);
+			fprintf(fp, "%d,%lf,%lf,%lf,%lf,%lf\n", scan_points_num, exe_time, align_time, mem_time, gpu_time, align_time - (mem_time + gpu_time));
 			fclose(fp);
 
 			// Set values for /estimate_twist
