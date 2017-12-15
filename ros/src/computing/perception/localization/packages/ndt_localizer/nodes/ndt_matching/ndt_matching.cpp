@@ -1332,7 +1332,10 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 			time_ndt_matching_pub.publish(time_ndt_matching);
 
 			// measurement
-			fprintf(fp, "%d,%lf,%lf,%lf,%lf,%lf\n", scan_points_num, exe_time, align_time, mem_time, gpu_time, align_time - (mem_time + gpu_time));
+			if (_use_gpu)
+				fprintf(fp, "%d,%lf,%lf,%lf,%lf,%lf\n", scan_points_num, exe_time, align_time, mem_time, gpu_time, align_time - (mem_time + gpu_time));
+			else
+				fprintf(fp, "%d,%lf,%lf\n", scan_points_num, exe_time, align_time);
 			fclose(fp);
 
 			// Set values for /estimate_twist
