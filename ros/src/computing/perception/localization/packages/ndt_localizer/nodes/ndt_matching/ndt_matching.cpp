@@ -972,13 +972,13 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 #ifdef CUDA_FOUND
 			if (_use_gpu == true)
 				{
-					gpu_ndt.resetTime_m();
-					gpu_ndt.resetTime_g();
+					gpu_ndt_ptr->resetTime_m();
+					gpu_ndt_ptr->resetTime_g();
 					align_start = std::chrono::system_clock::now();
 					gpu_ndt_ptr->align(init_guess);
 					align_end = std::chrono::system_clock::now();
-					mem_time = gpu_ndt.getTime_m();
-					gpu_time = gpu_ndt.getTime_g();
+					mem_time = gpu_ndt_ptr->getTime_m();
+					gpu_time = gpu_ndt_ptr->getTime_g();
 
 					has_converged = gpu_ndt_ptr->hasConverged();
 

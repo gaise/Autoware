@@ -13,6 +13,8 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
+#include <chrono>
+
 namespace gpu {
 class GRegistration {
 public:
@@ -45,6 +47,16 @@ public:
 
 	bool hasConverged() const;
 
+	/* Time measurement functions */
+	void resetTime_m();
+	void resetTime_g();
+	void startTimer_m();
+	void startTimer_g();
+	void endTimer_m();
+	void endTimer_g();
+	double getTime_m();
+	double getTime_g();
+
 	virtual ~GRegistration();
 protected:
 
@@ -72,6 +84,10 @@ protected:
 	int target_points_number_;
 
 	bool is_copied_;
+
+	/* Time measurement variable */
+	std::chrono::time_point<std::chrono::system_clock> m_start_, m_end_, g_start_, g_end_;
+	double m_time_, g_time_;
 };
 }
 
