@@ -10,6 +10,8 @@
 #include <float.h>
 #include <vector>
 
+#include <chrono>
+
 namespace gpu {
 class GVoxelGrid {
 public:
@@ -84,6 +86,16 @@ public:
 	 * the distance is larger than max_range. */
 	void nearestNeighborSearch(float *trans_x, float *trans_y, float *trans_z, int point_num, int *valid_distance, double *min_distance, float max_range);
 
+	/* Time measurement functions */
+	void startTimer_m();
+	void startTimer_g();
+	void endTimer_m();
+	void endTimer_g();
+	void resetTime_m();
+	void resetTime_g();
+	double getTime_m();
+	double getTime_g();
+
 	~GVoxelGrid();
 private:
 
@@ -157,6 +169,10 @@ private:
 	std::vector<OctreeGridSize> octree_grid_size_;
 
 	bool is_copied_;
+
+	/* Time measurement variables */
+	std::chrono::time_point<std::chrono::system_clock> m_start_, m_end_, g_start_, g_end_;
+	double m_time_, g_time_;
 };
 }
 

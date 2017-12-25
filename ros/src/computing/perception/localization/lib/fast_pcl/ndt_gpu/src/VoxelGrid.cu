@@ -18,6 +18,8 @@
 
 #include "fast_pcl/ndt_gpu/SymmetricEigenSolver.h"
 
+#include <chrono>
+
 namespace gpu {
 
 GVoxelGrid::GVoxelGrid():
@@ -1020,8 +1022,10 @@ void GVoxelGrid::ExclusiveScan(T *input, int ele_num, T *sum)
 {
 	thrust::device_ptr<T> dev_ptr(input);
 
+	startTimer_g();
 	thrust::exclusive_scan(dev_ptr, dev_ptr + ele_num, dev_ptr);
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
 
 	*sum = *(dev_ptr + ele_num - 1);
 }
@@ -1061,6 +1065,7 @@ void GVoxelGrid::radiusSearch(float *qx, float *qy, float *qz, int points_num, f
 
 	checkCudaErrors(cudaMalloc(&candidate_voxel_num_per_point, sizeof(int) * (points_num + 1)));
 
+	startTimer_g();
 	findBoundariesOfCandidateVoxels<<<grid_x, block_x>>>(qx, qy, qz, radius, points_num,
 															voxel_x_, voxel_y_, voxel_z_,
 															max_b_x_, max_b_y_, max_b_z_,
@@ -1070,6 +1075,8 @@ void GVoxelGrid::radiusSearch(float *qx, float *qy, float *qz, int points_num, f
 															candidate_voxel_num_per_point);
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
+	
 	//Total candidate voxel num is determined by an exclusive scan on candidate_voxel_num_per_point
 	ExclusiveScan(candidate_voxel_num_per_point, points_num + 1, &total_candidate_voxel_num);
 
@@ -1102,12 +1109,14 @@ void GVoxelGrid::radiusSearch(float *qx, float *qy, float *qz, int points_num, f
 
 	checkCudaErrors(cudaMalloc(&candidate_voxel_id, sizeof(int) * total_candidate_voxel_num));
 
+	startTimer_g();
 	updateCandidateVoxelIds<<<grid_x, block_x>>>(points_num, vgrid_x_, vgrid_y_, vgrid_z_,
 													max_vid_x, max_vid_y, max_vid_z,
 													min_vid_x, min_vid_y, min_vid_z,
 													candidate_voxel_num_per_point, candidate_voxel_id);
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
 
 	//Go through the candidate voxel id list and find out which voxels are really inside the radius
 	int *valid_voxel_mark;
@@ -1125,6 +1134,7 @@ void GVoxelGrid::radiusSearch(float *qx, float *qy, float *qz, int points_num, f
 	block_x = (total_candidate_voxel_num > BLOCK_SIZE_X) ? BLOCK_SIZE_X : total_candidate_voxel_num;
 	grid_x = (total_candidate_voxel_num - 1) / block_x + 1;
 
+	startTimer_g();
 	///CHECK VALID VOXEL COUNT AGAIN
 	inspectCandidateVoxels<<<grid_x, block_x>>>(qx, qy, qz, radius, max_nn, points_num,
 													centroid_, points_per_voxel_, voxel_num_,
@@ -1132,13 +1142,17 @@ void GVoxelGrid::radiusSearch(float *qx, float *qy, float *qz, int points_num, f
 													valid_voxel_mark, valid_voxel_count, valid_points_mark);
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
 
 	//Collect valid points
 	int *valid_points_location;
 
 	checkCudaErrors(cudaMalloc(&valid_points_location, sizeof(int) * (points_num + 1)));
+
+	startTimer_m();
 	checkCudaErrors(cudaMemset(valid_points_location, 0, sizeof(int) * (points_num + 1)));
 	checkCudaErrors(cudaMemcpy(valid_points_location, valid_points_mark, sizeof(int) * points_num, cudaMemcpyDeviceToDevice));
+	endTimer_m();
 
 	//Writing location to the output buffer is determined by an exclusive scan
 	ExclusiveScan(valid_points_location, points_num + 1, valid_points_num);
@@ -1176,15 +1190,19 @@ void GVoxelGrid::radiusSearch(float *qx, float *qy, float *qz, int points_num, f
 
 	checkCudaErrors(cudaMalloc(valid_points, sizeof(int) * (*valid_points_num)));
 
+	startTimer_g();
 	collectValidPoints<<<grid_x, block_x>>>(valid_points_mark, *valid_points, valid_points_location, points_num);
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
 
 	checkCudaErrors(cudaMalloc(starting_voxel_id, sizeof(int) * (*valid_points_num + 1)));
 
+	startTimer_g();
 	collectValidVoxelCount<<<grid_x, block_x>>>(valid_voxel_count, *starting_voxel_id, valid_points_location, points_num);
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
 
 	//Determine the starting location of voxels per points in the valid points list
 	ExclusiveScan(*starting_voxel_id, *valid_points_num + 1, valid_voxel_num);
@@ -1193,7 +1211,9 @@ void GVoxelGrid::radiusSearch(float *qx, float *qy, float *qz, int points_num, f
 	int *valid_voxel_location;
 
 	checkCudaErrors(cudaMalloc(&valid_voxel_location, sizeof(int) * (total_candidate_voxel_num + 1)));
+	startTimer_m();
 	checkCudaErrors(cudaMemcpy(valid_voxel_location, valid_voxel_mark, sizeof(int) * total_candidate_voxel_num, cudaMemcpyDeviceToDevice));
+	endTimer_m();
 
 	ExclusiveScan(valid_voxel_location, total_candidate_voxel_num + 1, valid_voxel_num);
 
@@ -1242,9 +1262,11 @@ void GVoxelGrid::radiusSearch(float *qx, float *qy, float *qz, int points_num, f
 	block_x = (total_candidate_voxel_num > BLOCK_SIZE_X) ? BLOCK_SIZE_X : total_candidate_voxel_num;
 	grid_x = (total_candidate_voxel_num - 1) / block_x + 1;
 
+	startTimer_g();
 	collectValidVoxels<<<grid_x, block_x>>>(valid_voxel_mark, candidate_voxel_id, *valid_voxel_id, valid_voxel_location, total_candidate_voxel_num);
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
+	endTimer_g();
 
 	checkCudaErrors(cudaFree(max_vid_x));
 	checkCudaErrors(cudaFree(max_vid_y));
@@ -1652,4 +1674,46 @@ void GVoxelGrid::nearestNeighborSearch(float *trans_x, float *trans_y, float *tr
 	checkCudaErrors(cudaFree(vid_z));
 }
 
+void GVoxelGrid::startTimer_m()
+{
+	m_start_ = std::chrono::system_clock::now();
+}
+	
+void GVoxelGrid::startTimer_g()
+{
+	g_start_ = std::chrono::system_clock::now();
+}
+
+void GVoxelGrid::endTimer_m()
+{
+	m_end_ = std::chrono::system_clock::now();
+	m_time_ += std::chrono::duration_cast<std::chrono::microseconds>(m_end_ - m_start_).count() / 1000.0;
+}
+
+void GVoxelGrid::endTimer_g()
+{
+	g_end_ = std::chrono::system_clock::now();
+	g_time_ += std::chrono::duration_cast<std::chrono::microseconds>(g_end_ - g_start_).count() / 1000.0;
+}
+
+void GVoxelGrid::resetTime_m()
+{
+	m_time_ = 0.0;
+}
+
+void GVoxelGrid::resetTime_g()
+{
+	g_time_ = 0.0;
+}
+
+double GVoxelGrid::getTime_m()
+{
+	return m_time_;
+}
+
+double GVoxelGrid::getTime_g()
+{
+	return m_time_;
+}
+	
 }

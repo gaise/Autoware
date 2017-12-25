@@ -1,6 +1,7 @@
 #include "fast_pcl/ndt_gpu/Registration.h"
 #include "fast_pcl/ndt_gpu/debug.h"
 #include <iostream>
+#include <chrono>
 
 namespace gpu {
 
@@ -170,7 +171,7 @@ void GRegistration::setInputSource(pcl::PointCloud<pcl::PointXYZI>::Ptr input)
 		pcl::PointXYZI *host_tmp = input->points.data();
 
 		// Pin the host buffer for accelerating the memory copy
-		checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZI) * points_number_, cudaHostRegisterDefault));
+		// checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZI) * points_number_, cudaHostRegisterDefault));
 
 		checkCudaErrors(cudaMemcpy(tmp, host_tmp, sizeof(pcl::PointXYZI) * points_number_, cudaMemcpyHostToDevice));
 
@@ -228,7 +229,7 @@ void GRegistration::setInputSource(pcl::PointCloud<pcl::PointXYZI>::Ptr input)
 		checkCudaErrors(cudaFree(tmp));
 
 		// Unpin host buffer
-		checkCudaErrors(cudaHostUnregister(host_tmp));
+		// checkCudaErrors(cudaHostUnregister(host_tmp));
 	}
 }
 
@@ -245,7 +246,7 @@ void GRegistration::setInputSource(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
 		pcl::PointXYZ *host_tmp = input->points.data();
 
 		// Pin the host buffer for accelerating the memory copy
-		checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZ) * points_number_, cudaHostRegisterDefault));
+		// checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZ) * points_number_, cudaHostRegisterDefault));
 
 		checkCudaErrors(cudaMemcpy(tmp, host_tmp, sizeof(pcl::PointXYZ) * points_number_, cudaMemcpyHostToDevice));
 
@@ -299,7 +300,7 @@ void GRegistration::setInputSource(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
 		checkCudaErrors(cudaMemcpy(trans_z_, z_, sizeof(float) * points_number_, cudaMemcpyDeviceToDevice));
 
 		checkCudaErrors(cudaFree(tmp));
-		checkCudaErrors(cudaHostUnregister(host_tmp));
+		// checkCudaErrors(cudaHostUnregister(host_tmp));
 	}
 }
 
@@ -317,7 +318,7 @@ void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZI>::Ptr input)
 
 		pcl::PointXYZI *host_tmp = input->points.data();
 
-		checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZI) * target_points_number_, cudaHostRegisterDefault));
+		// checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZI) * target_points_number_, cudaHostRegisterDefault));
 
 		checkCudaErrors(cudaMemcpy(tmp, host_tmp, sizeof(pcl::PointXYZI) * target_points_number_, cudaMemcpyHostToDevice));
 
@@ -347,7 +348,7 @@ void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZI>::Ptr input)
 		checkCudaErrors(cudaGetLastError());
 		checkCudaErrors(cudaDeviceSynchronize());
 
-		checkCudaErrors(cudaHostUnregister(host_tmp));
+		// checkCudaErrors(cudaHostUnregister(host_tmp));
 		checkCudaErrors(cudaFree(tmp));
 	}
 }
@@ -363,7 +364,7 @@ void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
 
 		pcl::PointXYZ *host_tmp = input->points.data();
 
-		checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZ) * target_points_number_, cudaHostRegisterDefault));
+		// checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZ) * target_points_number_, cudaHostRegisterDefault));
 
 		checkCudaErrors(cudaMemcpy(tmp, host_tmp, sizeof(pcl::PointXYZ) * target_points_number_, cudaMemcpyHostToDevice));
 
@@ -394,12 +395,12 @@ void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
 		checkCudaErrors(cudaDeviceSynchronize());
 
 		checkCudaErrors(cudaFree(tmp));
-		checkCudaErrors(cudaHostUnregister(host_tmp));
+		// checkCudaErrors(cudaHostUnregister(host_tmp));
 	}
 }
 
 void GRegistration::align(const Eigen::Matrix<float, 4, 4> &guess)
-{
+{	
 	converged_ = false;
 
 	final_transformation_ = transformation_ = previous_transformation_ = Eigen::Matrix<float, 4, 4>::Identity();
@@ -409,6 +410,48 @@ void GRegistration::align(const Eigen::Matrix<float, 4, 4> &guess)
 
 void GRegistration::computeTransformation(const Eigen::Matrix<float, 4, 4> &guess) {
 	printf("Unsupported by Registration\n");
+}
+
+void GRegistration::resetTime_m()
+{
+	m_time_ = 0.0;
+}
+
+void GRegistration::startTimer_m()
+{
+	m_start_ = std::chrono::system_clock::now();
+}
+
+void GRegistration::endTimer_m()
+{
+	m_end_ = std::chrono::system_clock::now();
+	m_time_ += std::chrono::duration_cast<std::chrono::microseconds>(m_end_ - m_start_).count() / 1000.0;
+}
+
+double GRegistration::getTime_m()
+{
+	return m_time_;
+}
+
+void GRegistration::resetTime_g()
+{
+	g_time_ = 0.0;
+}
+
+void GRegistration::startTimer_g()
+{
+	g_start_ = std::chrono::system_clock::now();
+}
+
+void GRegistration::endTimer_g()
+{
+	g_end_ = std::chrono::system_clock::now();
+	g_time_ += std::chrono::duration_cast<std::chrono::microseconds>(g_end_ - g_start_).count() / 1000.0;
+}
+
+double GRegistration::getTime_g()
+{
+	return g_time_;
 }
 
 }
