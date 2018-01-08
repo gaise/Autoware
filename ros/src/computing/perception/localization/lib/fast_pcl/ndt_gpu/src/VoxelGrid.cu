@@ -758,6 +758,38 @@ void GVoxelGrid::setInput(float *x, float *y, float *z, int points_num)
 	buildOctree();
 }
 
+extern "C"  __global__ void seperateMaxMin(float *x, float *y, float *z, int full_size, int half_size)
+{
+        int index = threadIdx.x + blockIdx.x * blockDim.x;
+        int stride = blockDim.x * gridDim.x;
+        float tmp;
+
+	for (int i = index; i < half_size; i += stride) {
+		if (i + half_size >= full_size) break;
+		
+		if (x[i] < x[i+half_size])
+			{
+				tmp = x[i];
+				x[i] = x[i+half_size];
+				x[i+half_size] = tmp;
+			}
+
+		if (y[i] < y[i+half_size])
+			{
+				tmp = y[i];
+				y[i] = y[i+half_size];
+				y[i+half_size] = tmp;
+			}
+
+		if (z[i] < z[i+half_size])
+			{
+				tmp = z[i];
+				z[i] = z[i+half_size];
+				z[i+half_size] = tmp;
+			}
+	}
+}
+
 /* Find the largest coordinate values */
 extern "C"  __global__ void findMax(float *x, float *y, float *z, int full_size, int half_size)
 {
@@ -792,32 +824,52 @@ void GVoxelGrid::findBoundaries()
 	checkCudaErrors(cudaMalloc(&max_x, sizeof(float) * points_num_));
 	checkCudaErrors(cudaMalloc(&max_y, sizeof(float) * points_num_));
 	checkCudaErrors(cudaMalloc(&max_z, sizeof(float) * points_num_));
-	checkCudaErrors(cudaMalloc(&min_x, sizeof(float) * points_num_));
-	checkCudaErrors(cudaMalloc(&min_y, sizeof(float) * points_num_));
-	checkCudaErrors(cudaMalloc(&min_z, sizeof(float) * points_num_));
-
+	
 	checkCudaErrors(cudaMemcpy(max_x, x_, sizeof(float) * points_num_, cudaMemcpyDeviceToDevice));
 	checkCudaErrors(cudaMemcpy(max_y, y_, sizeof(float) * points_num_, cudaMemcpyDeviceToDevice));
 	checkCudaErrors(cudaMemcpy(max_z, z_, sizeof(float) * points_num_, cudaMemcpyDeviceToDevice));
 
-	checkCudaErrors(cudaMemcpy(min_x, x_, sizeof(float) * points_num_, cudaMemcpyDeviceToDevice));
-	checkCudaErrors(cudaMemcpy(min_y, y_, sizeof(float) * points_num_, cudaMemcpyDeviceToDevice));
-	checkCudaErrors(cudaMemcpy(min_z, z_, sizeof(float) * points_num_, cudaMemcpyDeviceToDevice));
+	FILE *fp = fopen("/home/autoware/time/matching/minmax_opt.csv", "a");
+	std::chrono::time_point<std::chrono::system_clock> start, end;
+
+	start = std::chrono::system_clock::now();
 
 	int points_num = points_num_;
 
+	int half_points_num = (points_num - 1) / 2 + 1;
+	int block_x = (half_points_num > BLOCK_SIZE_X) ? BLOCK_SIZE_X : half_points_num;
+	int grid_x = (half_points_num - 1) / block_x + 1;
+
+	seperateMaxMin<<<grid_x, block_x>>>(max_x, max_y, max_z, points_num, half_points_num);
+	checkCudaErrors(cudaGetLastError());
+
+	int min_points_num = half_points_num;
+	int min_half_points_num;
+	min_x = max_x + (points_num / 2);
+	min_y = max_y + (points_num / 2);
+	min_z = max_z + (points_num / 2);
+	points_num = half_points_num;
+
 	while (points_num > 1) {
-		int half_points_num = (points_num - 1) / 2 + 1;
-		int block_x = (half_points_num > BLOCK_SIZE_X) ? BLOCK_SIZE_X : half_points_num;
-		int grid_x = (half_points_num - 1) / block_x + 1;
+		half_points_num = (points_num - 1) / 2 + 1;
+		block_x = (half_points_num > BLOCK_SIZE_X) ? BLOCK_SIZE_X : half_points_num;
+		grid_x = (half_points_num - 1) / block_x + 1;
 
 		findMax<<<grid_x, block_x>>>(max_x, max_y, max_z, points_num, half_points_num);
 		checkCudaErrors(cudaGetLastError());
 
-		findMin<<<grid_x, block_x>>>(min_x, min_y, min_z, points_num, half_points_num);
+		points_num = half_points_num;
+	}
+
+	while (min_points_num > 1) {
+         	min_half_points_num = (min_points_num - 1) / 2 + 1;
+		block_x = (min_half_points_num > BLOCK_SIZE_X) ? BLOCK_SIZE_X : min_half_points_num;
+		grid_x = (min_half_points_num - 1) / block_x + 1;
+
+		findMin<<<grid_x, block_x>>>(min_x, min_y, min_z, min_points_num, min_half_points_num);
 		checkCudaErrors(cudaGetLastError());
 
-		points_num = half_points_num;
+		min_points_num = min_half_points_num;
 	}
 
 	checkCudaErrors(cudaDeviceSynchronize());
@@ -829,6 +881,10 @@ void GVoxelGrid::findBoundaries()
 	checkCudaErrors(cudaMemcpy(&min_x_, min_x, sizeof(float), cudaMemcpyDeviceToHost));
 	checkCudaErrors(cudaMemcpy(&min_y_, min_y, sizeof(float), cudaMemcpyDeviceToHost));
 	checkCudaErrors(cudaMemcpy(&min_z_, min_z, sizeof(float), cudaMemcpyDeviceToHost));
+
+	end = std::chrono::system_clock::now();
+	fprintf(fp, "%d,%lf\n", points_num_, std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0);
+	fclose(fp);
 
 	max_b_x_ = static_cast<int> (floor(max_x_ / voxel_x_));
 	max_b_y_ = static_cast<int> (floor(max_y_ / voxel_y_));
@@ -846,9 +902,6 @@ void GVoxelGrid::findBoundaries()
 	checkCudaErrors(cudaFree(max_y));
 	checkCudaErrors(cudaFree(max_z));
 
-	checkCudaErrors(cudaFree(min_x));
-	checkCudaErrors(cudaFree(min_y));
-	checkCudaErrors(cudaFree(min_z));
 }
 
 /* Find indexes idx, idy and idz of candidate voxels */

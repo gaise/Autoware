@@ -431,6 +431,16 @@ static void param_callback(const autoware_msgs::ConfigNdt::ConstPtr& input)
 
 static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+        FILE *fp;
+	if (_use_gpu && _use_fast_pcl)
+	  fp = fopen("/home/autoware/time/matching/map_gpu.csv", "a");
+	else if (_use_fast_pcl)
+	  fp = fopen("/home/autoware/time/matching/map_cpu.csv", "a");
+	else
+	  fp = fopen("/home/autoware/time/matching/map_org.csv", "a");
+	std::chrono::time_point<std::chrono::system_clock> start, end;
+	double time;
+
 	// if (map_loaded == 0)
 	if (points_map_num != input->width)
 		{
@@ -467,7 +477,9 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 				{
 					std::shared_ptr<gpu::GNormalDistributionsTransform> new_gpu_ndt_ptr = std::make_shared<gpu::GNormalDistributionsTransform>();
 					new_gpu_ndt_ptr->setResolution(ndt_res);
+					start = std::chrono::system_clock::now();
 					new_gpu_ndt_ptr->setInputTarget(map_ptr);
+					end = std::chrono::system_clock::now();
 					new_gpu_ndt_ptr->setMaximumIterations(max_iter);
 					new_gpu_ndt_ptr->setStepSize(step_size);
 					new_gpu_ndt_ptr->setTransformationEpsilon(trans_eps);
@@ -489,7 +501,9 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 					{
 						cpu::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> new_cpu_ndt;
 						new_cpu_ndt.setResolution(ndt_res);
+						start = std::chrono::system_clock::now();
 						new_cpu_ndt.setInputTarget(map_ptr);
+						end = std::chrono::system_clock::now();
 						new_cpu_ndt.setMaximumIterations(max_iter);
 						new_cpu_ndt.setStepSize(step_size);
 						new_cpu_ndt.setTransformationEpsilon(trans_eps);
@@ -510,7 +524,9 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 						pcl::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> new_ndt;
 						pcl::PointCloud<pcl::PointXYZ>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 						new_ndt.setResolution(ndt_res);
+						start = std::chrono::system_clock::now();
 						new_ndt.setInputTarget(map_ptr);
+						end = std::chrono::system_clock::now();
 						new_ndt.setMaximumIterations(max_iter);
 						new_ndt.setStepSize(step_size);
 						new_ndt.setTransformationEpsilon(trans_eps);
@@ -524,9 +540,13 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 						ndt = new_ndt;
 						pthread_mutex_unlock(&mutex);
 					}
+			
+			time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0;
+			fprintf(fp, "%d,%lf\n", points_map_num, time);
 
 			map_loaded = 1;
 		}
+	fclose(fp);
 }
 
 static void gnss_callback(const geometry_msgs::PoseStamped::ConstPtr& input)
