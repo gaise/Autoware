@@ -789,6 +789,11 @@ void GVoxelGrid::findBoundaries()
 {
 	float *max_x, *max_y, *max_z, *min_x, *min_y, *min_z;
 
+	FILE *fp = fopen("/home/nvidia/tomoya/time/matching/minmax_opt.csv", "a");
+	std::chrono::time_point<std::chrono::system_clock> start, end;
+
+	start = std::chrono::system_clock::now();
+
 	checkCudaErrors(cudaMalloc(&max_x, sizeof(float) * points_num_));
 	checkCudaErrors(cudaMalloc(&max_y, sizeof(float) * points_num_));
 	checkCudaErrors(cudaMalloc(&max_z, sizeof(float) * points_num_));
@@ -830,6 +835,10 @@ void GVoxelGrid::findBoundaries()
 	checkCudaErrors(cudaMemcpy(&min_y_, min_y, sizeof(float), cudaMemcpyDeviceToHost));
 	checkCudaErrors(cudaMemcpy(&min_z_, min_z, sizeof(float), cudaMemcpyDeviceToHost));
 
+	end = std::chrono::system_clock::now();
+	fprintf(fp, "%d,%lf\n", points_num_, std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0);
+	fclose(fp);
+	
 	max_b_x_ = static_cast<int> (floor(max_x_ / voxel_x_));
 	max_b_y_ = static_cast<int> (floor(max_y_ / voxel_y_));
 	max_b_z_ = static_cast<int> (floor(max_z_ / voxel_z_));
