@@ -829,7 +829,7 @@ void GVoxelGrid::findBoundaries()
 	checkCudaErrors(cudaMemcpy(max_y, y_, sizeof(float) * points_num_, cudaMemcpyDeviceToDevice));
 	checkCudaErrors(cudaMemcpy(max_z, z_, sizeof(float) * points_num_, cudaMemcpyDeviceToDevice));
 
-	FILE *fp = fopen("/home/autoware/time/matching/minmax_opt.csv", "a");
+	FILE *fp = fopen("/home/nvidia/tomoya/time/matching/minmax_opt.csv", "a");
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 
 	start = std::chrono::system_clock::now();
