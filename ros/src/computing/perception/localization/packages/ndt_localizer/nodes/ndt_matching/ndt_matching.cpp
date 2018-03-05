@@ -410,6 +410,11 @@ static void param_callback(const autoware_msgs::ConfigNdt::ConstPtr& input)
 
 static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+	// time measurement variable
+	std::chrono::time_point<std::chrono::system_clock> sit_start, sit_end;
+	double sit_time;
+	FILE *fp;
+	
   // if (map_loaded == 0)
   if (points_map_num != input->width)
   {
@@ -446,7 +451,16 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
       pcl::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> new_ndt;
       pcl::PointCloud<pcl::PointXYZ>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZ>);
       new_ndt.setResolution(ndt_res);
+
+			// time measurement
+			fp = fopen("/home/nvidia/tomoya/time/matching/sit_pcl.csv", "a");
+			sit_start = std::chrono::system_clock::now();
       new_ndt.setInputTarget(map_ptr);
+			sit_end = std::chrono::system_clock::now();
+			sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
+			fprintf(fp, "%d,%lf\n", points_map_num, sit_time);
+			fclose(fp);
+			
       new_ndt.setMaximumIterations(max_iter);
       new_ndt.setStepSize(step_size);
       new_ndt.setTransformationEpsilon(trans_eps);
@@ -461,7 +475,16 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     {
       cpu::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> new_anh_ndt;
       new_anh_ndt.setResolution(ndt_res);
+			
+			// time measurement
+			fp = fopen("/home/nvidia/tomoya/time/matching/sit_anh.csv", "a");
+			sit_start = std::chrono::system_clock::now();
       new_anh_ndt.setInputTarget(map_ptr);
+			sit_end = std::chrono::system_clock::now();
+			sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
+			fprintf(fp, "%d,%lf\n", points_map_num, sit_time);
+			fclose(fp);
+			
       new_anh_ndt.setMaximumIterations(max_iter);
       new_anh_ndt.setStepSize(step_size);
       new_anh_ndt.setTransformationEpsilon(trans_eps);
@@ -482,7 +505,16 @@ static void map_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     {
       std::shared_ptr<gpu::GNormalDistributionsTransform> new_anh_gpu_ndt_ptr = std::make_shared<gpu::GNormalDistributionsTransform>();
       new_anh_gpu_ndt_ptr->setResolution(ndt_res);
+						
+			// time measurement
+			fp = fopen("/home/nvidia/tomoya/time/matching/sit_gpu.csv", "a");
+			sit_start = std::chrono::system_clock::now();
       new_anh_gpu_ndt_ptr->setInputTarget(map_ptr);
+			sit_end = std::chrono::system_clock::now();
+			sit_time = std::chrono::duration_cast<std::chrono::microseconds>(sit_end - sit_start).count() / 1000.0;
+			fprintf(fp, "%d,%lf\n", points_map_num, sit_time);
+			fclose(fp);
+			
       new_anh_gpu_ndt_ptr->setMaximumIterations(max_iter);
       new_anh_gpu_ndt_ptr->setStepSize(step_size);
       new_anh_gpu_ndt_ptr->setTransformationEpsilon(trans_eps);
@@ -877,6 +909,9 @@ static void imu_callback(const sensor_msgs::Imu::Ptr& input)
 
 static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
+	// time measurement variable
+	FILE* fp;
+	
   if (map_loaded == 1 && init_pos_set == 1)
   {
     matching_start = std::chrono::system_clock::now();
@@ -1306,6 +1341,18 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     exe_time = std::chrono::duration_cast<std::chrono::microseconds>(matching_end - matching_start).count() / 1000.0;
     time_ndt_matching.data = exe_time;
     time_ndt_matching_pub.publish(time_ndt_matching);
+
+		// time measurement
+		if (_method_type == MethodType::PCL_GENERIC)
+      fp = fopen("/home/nvidia/tomoya/time/matching/align_pcl.csv", "a");
+    else if (_method_type == MethodType::PCL_ANH)
+      fp = fopen("/home/nvidia/tomoya/time/matching/align_anh.csv", "a");      
+#ifdef CUDA_FOUND
+    else
+      fp = fopen("/home/nvidia/tomoya/time/matching/align_gpu.csv", "a");
+		fprintf(fp, "%d,%lf\n", scan_points_num, align_time);
+		fclose(fp);
+#endif
 
     // Set values for /estimate_twist
     estimate_twist_msg.header.stamp = current_scan_time;
